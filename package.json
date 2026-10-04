@@ -1,0 +1,63 @@
+{
+  "name": "turudev-invoicing",
+  "version": "1.0.0",
+  "description": "Persistent internal invoicing workspace with admin login and server-generated PDFs",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "dev": "node --watch server/index.mjs",
+    "dev:web": "vite",
+    "build": "tsc && vite build",
+    "start": "node server/index.mjs",
+    "setup:local": "node scripts/setup-local.mjs",
+    "test": "node --test tests/api.test.mjs",
+    "test:e2e": "playwright test",
+    "check": "tsc --noEmit",
+    "smoke": "node scripts/smoke.mjs",
+    "backup": "node scripts/backup.mjs",
+    "reset:admin": "node scripts/reset-admin.mjs",
+    "format": "prettier --write src server scripts tests *.ts *.json index.html compose.yaml",
+    "build:docker": "node scripts/build-docker.mjs",
+    "test:container": "node tests/container-smoke.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YongkyA23/TuruDev-Invoicing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/YongkyA23/TuruDev-Invoicing/issues"
+  },
+  "homepage": "https://github.com/YongkyA23/TuruDev-Invoicing#readme",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "lucide-react": "^1.51.0",
+    "pdfkit": "^0.20.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "prettier": "^3.9.9",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2"
+  }
+}
