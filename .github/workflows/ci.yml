@@ -44,6 +44,24 @@ jobs:
       - run: bun run test
       - run: bunx playwright install --with-deps chromium
       - run: bun run test:e2e
+      - name: Package production release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile --production
+          release_dir="$RUNNER_TEMP/turudev-invoicing"
+          mkdir -p "$release_dir/public" "$release_dir/scripts"
+          cp -a dist server package.json bun.lock node_modules "$release_dir/"
+          cp public/turudev-logo.png "$release_dir/public/"
+          cp scripts/backup.mjs scripts/migrate-sqlite-to-mysql.mjs scripts/reset-admin.mjs scripts/restore.mjs "$release_dir/scripts/"
+          tar -C "$release_dir" -czf "$RUNNER_TEMP/turudev-invoicing.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: turudev-invoicing-${{ github.sha }}
+          path: ${{ runner.temp }}/turudev-invoicing.tar.gz
+          if-no-files-found: error
+          retention-days: 1
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

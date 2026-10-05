@@ -482,8 +482,10 @@ app.use((err, req, res, next) => {
   console.error("Request failed:", err.message);
   res.status(500).json({ error: "An unexpected error occurred" });
 });
-const server = app.listen(Number(process.env.PORT || 3000), "0.0.0.0", () =>
-  console.log(`TuruDev server listening on port ${process.env.PORT || 3000}`),
+const server = app.listen(
+  Number(process.env.PORT || 3000),
+  process.env.HOST || "0.0.0.0",
+  () => console.log(`TuruDev server listening on port ${process.env.PORT || 3000}`),
 );
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () =>

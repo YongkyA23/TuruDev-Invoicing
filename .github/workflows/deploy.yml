@@ -1,0 +1,52 @@
+name: Deploy invoicing
+on:
+  workflow_run:
+    workflows: ["Validate invoicing"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: [self-hosted, linux, x64, turudev-invoices]
+    concurrency:
+      group: turudev-invoicing-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: turudev-invoicing-${{ github.event.workflow_run.head_sha }}
+          path: ${{ runner.temp }}/release
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Deploy to Labuan
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          app_root=/var/www/turudev-invoicing
+          release="$app_root/releases/$RELEASE_SHA"
+          mkdir -p "$release"
+          tar -xzf "$RUNNER_TEMP/release/turudev-invoicing.tar.gz" -C "$release"
+          find "$release" -type d -exec chmod 750 {} +
+          find "$release" -type f -exec chmod 640 {} +
+
+          ln -sfn "$release" "$app_root/current.next"
+          mv -Tf "$app_root/current.next" "$app_root/current"
+          sudo -n /usr/local/sbin/turudev-invoicing-migrate-once
+          sudo -n /usr/bin/systemctl restart turudev-invoicing.service
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:3020/api/health >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:3020/api/health
+          curl -fsS https://invoices.turudev.id/api/health
+          sudo -n /usr/bin/systemctl is-active turudev-invoicing.service
