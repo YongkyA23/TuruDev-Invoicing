@@ -1,6 +1,6 @@
 # Validation and deployment handoff
 
-Validated in the cloud workspace on 4 October 2026. The project implements the supplied PRD plus the requested backend, admin login, and server-side PDF generation.
+The results below were collected in the cloud workspace on 4 October 2026 for the prior SQLite implementation. They do not validate the MySQL migration now in this checkout.
 
 | Check                                          | Observed result                                                                                                                                                                       |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,4 +33,4 @@ No callable Sites connector or tool-search capability is available in this sessi
 
 To publish the full application, enable the requested Sites deployment tools and provide a target that supports a Node.js 24 server with persistent storage. If the selected Sites offering supports only static files, a compatible backend host and a same-origin API proxy are required. Configure the public HTTPS origin and initial admin credentials securely in the hosting settings, following README.md; never put passwords in chat or source control.
 
-This is a single-instance SQLite application for a small internal team. Deployment must preserve the database volume and terminate HTTPS through a trusted proxy. It is ready for deployment review, but publication, public HTTPS operation, and fresh-task restoration have not been claimed or verified.
+The earlier validation described a single-instance SQLite deployment. The current checkout uses MySQL 8.4; its build and syntax checks have passed, but MySQL API/browser/container workflows and this environment's SQLite-to-MySQL data migration have not yet run.

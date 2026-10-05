@@ -1,5 +1,6 @@
 import { z } from "zod";
 export const currencies = ["IDR", "USD", "SGD"];
+const MAX_LOGO_BYTES = 5_000_000;
 const text = (max = 500) => z.string().trim().max(max).default("");
 const email = z.union([z.literal(""), z.string().email().max(254)]).default("");
 const decimal = (max) => z.number().finite().min(0).max(max);
@@ -34,10 +35,17 @@ export const businessSchema = z.object({
   taxId: text(100),
   logo: z
     .string()
-    .max(700000)
+    .max(7000000)
     .refine(
       (s) => !s || /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(s),
       "Use a PNG or JPEG logo",
+    )
+    .refine(
+      (s) =>
+        !s ||
+        Buffer.byteLength(s.slice(s.indexOf(",") + 1), "base64") <=
+          MAX_LOGO_BYTES,
+      "Logo must be 5 MB or smaller",
     )
     .default(""),
 });

@@ -1,3 +1,5 @@
+import { ui } from "../components/styles";
+import { styles } from "./Clients.styles";
 import { useState, type FormEvent } from "react";
 import {
   Plus,
@@ -19,6 +21,7 @@ import {
   PageTitle,
   Modal,
   useLoad,
+  useConfirm,
   type Navigate,
 } from "../components/ui";
 
@@ -57,7 +60,7 @@ export function ClientForm({
   return (
     <form onSubmit={save}>
       {error && <ErrorBox error={error} />}
-      <div className="form-grid">
+      <div className={ui.formGrid}>
         <Field label="Client name *">
           <input
             autoFocus
@@ -110,13 +113,13 @@ export function ClientForm({
           rows={2}
         />
       </Field>
-      <div className="modal-footer">
-        <button className="btn" type="button" onClick={onClose}>
+      <div className={ui.modalFooter}>
+        <button className={ui.btn} type="button" onClick={onClose}>
           Cancel
         </button>
-        <button className="btn primary" disabled={busy}>
+        <button className={ui.btnPrimary} disabled={busy}>
           {busy ? (
-            <LoaderCircle size={16} className="spin" />
+            <LoaderCircle size={16} className={ui.spin} />
           ) : (
             <Check size={16} />
           )}
@@ -134,6 +137,7 @@ export function Clients({
   navigate: Navigate;
   notify: (m: string) => void;
 }) {
+  const confirm = useConfirm();
   const [revision, setRevision] = useState(0);
   const [edit, setEdit] = useState<Client | null>(null);
   const [view, setView] = useState<Client | null>(null);
@@ -146,9 +150,12 @@ export function Clients({
   );
   async function remove(c: Client) {
     if (
-      !confirm(
-        `Delete ${c.name}? Existing invoices will keep their saved client information.`,
-      )
+      !(await confirm({
+        title: "Delete client?",
+        message: `Delete ${c.name}? Existing invoices will keep their saved client information.`,
+        confirmLabel: "Delete client",
+        destructive: true,
+      }))
     )
       return;
     try {
@@ -161,22 +168,18 @@ export function Clients({
   }
   return (
     <>
-      <PageTitle
-        eyebrow="GOOD RELATIONSHIPS, SAVED"
-        title="Clients"
-        description="Save their details once. Make the next invoice easier."
-      >
+      <PageTitle title="Clients">
         <button
-          className="btn primary"
+          className={ui.btnPrimary}
           onClick={() => setEdit({ ...blankClient })}
         >
           <Plus size={17} />
           Add client
         </button>
       </PageTitle>
-      <section className="panel">
-        <div className="filter-bar">
-          <div className="search">
+      <section className={ui.panel}>
+        <div className={ui.filterBar}>
+          <div className={ui.search}>
             <Search size={17} />
             <input
               aria-label="Search clients"
@@ -185,7 +188,7 @@ export function Clients({
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <span className="muted">{list?.length || 0} clients</span>
+          <span className={ui.muted}>{list?.length || 0} clients</span>
         </div>
         {error ? (
           <ErrorBox error={error} retry={retry} />
@@ -193,20 +196,19 @@ export function Clients({
           <Spinner />
         ) : !list.length ? (
           <Empty
-            title="A place for your clients."
-            description="Save client information so it can be reused on future invoices."
+            title="No clients found"
             action="Add client"
             onClick={() => setEdit({ ...blankClient })}
           />
         ) : (
-          <div className="table-wrap">
+          <div className={ui.tableWrap}>
             <table>
               <thead>
                 <tr>
                   <th>Client</th>
                   <th>Company</th>
                   <th>Email / phone</th>
-                  <th className="align-right">Actions</th>
+                  <th className={ui.alignRight}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -214,10 +216,10 @@ export function Clients({
                   <tr key={c.id}>
                     <td>
                       <button
-                        className="client-cell plain-button"
+                        className={styles.clientCellPlainButton}
                         onClick={() => setView(c)}
                       >
-                        <span className="avatar">
+                        <span className={ui.avatar}>
                           {c.name.slice(0, 2).toUpperCase()}
                         </span>
                         <strong>{c.name}</strong>
@@ -226,26 +228,26 @@ export function Clients({
                     <td>{c.company || "—"}</td>
                     <td>
                       {c.email || "—"}
-                      <small className="subtext">{c.phone}</small>
+                      <small className={ui.subtext}>{c.phone}</small>
                     </td>
                     <td>
-                      <div className="row-actions">
+                      <div className={ui.rowActions}>
                         <button
-                          className="icon-button"
+                          className={ui.iconButton}
                           aria-label={`View ${c.name}`}
                           onClick={() => setView(c)}
                         >
                           <Eye size={16} />
                         </button>
                         <button
-                          className="icon-button"
+                          className={ui.iconButton}
                           aria-label={`Edit ${c.name}`}
                           onClick={() => setEdit(c)}
                         >
                           <Pencil size={16} />
                         </button>
                         <button
-                          className="icon-button danger-icon"
+                          className={ui.iconButtonDangerIcon}
                           aria-label={`Delete ${c.name}`}
                           onClick={() => remove(c)}
                         >
@@ -278,16 +280,16 @@ export function Clients({
       )}
       {view && (
         <Modal title={view.name} onClose={() => setView(null)}>
-          <div className="client-detail">
+          <div className={styles.clientDetail}>
             <p>{view.company}</p>
-            <p className="pre-wrap">{view.address}</p>
+            <p className={ui.preWrap}>{view.address}</p>
             <p>
               {view.email}
               <br />
               {view.phone}
             </p>
             {view.taxId && <p>Tax ID: {view.taxId}</p>}
-            {view.notes && <p className="note-box">{view.notes}</p>}
+            {view.notes && <p className={ui.noteBox}>{view.notes}</p>}
             <ClientHistory
               id={view.id!}
               navigate={(route) => {
@@ -296,9 +298,9 @@ export function Clients({
               }}
             />
           </div>
-          <div className="modal-footer">
+          <div className={ui.modalFooter}>
             <button
-              className="btn primary"
+              className={ui.btnPrimary}
               onClick={() => {
                 setEdit(view);
                 setView(null);
@@ -331,7 +333,7 @@ export function ClientHistory({
       ) : !data ? (
         <Spinner />
       ) : data.length ? (
-        <div className="history">
+        <div className={styles.history}>
           {data.map((i) => (
             <button key={i.id} onClick={() => navigate(`invoice/${i.id}`)}>
               <span>
@@ -344,7 +346,7 @@ export function ClientHistory({
           ))}
         </div>
       ) : (
-        <p className="muted">No invoices for this client yet.</p>
+        <p className={ui.muted}>No invoices for this client yet.</p>
       )}
     </>
   );

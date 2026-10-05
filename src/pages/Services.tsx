@@ -1,3 +1,5 @@
+import { ui } from "../components/styles";
+import { styles } from "./Services.styles";
 import { useState, type FormEvent } from "react";
 import { Layers, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import type { Service, Settings, Invoice } from "../types";
@@ -10,9 +12,11 @@ import {
   PageTitle,
   Modal,
   useLoad,
+  useConfirm,
 } from "../components/ui";
 
 export function Services({ notify }: { notify: (m: string) => void }) {
+  const confirm = useConfirm();
   const [revision, setRevision] = useState(0);
   const [edit, setEdit] = useState<Service | null>(null);
   const [search, setSearch] = useState("");
@@ -23,7 +27,12 @@ export function Services({ notify }: { notify: (m: string) => void }) {
   );
   async function remove(s: Service) {
     if (
-      !confirm(`Delete ${s.name}? Existing invoice items will stay unchanged.`)
+      !(await confirm({
+        title: "Delete service?",
+        message: `Delete ${s.name}? Existing invoice items will stay unchanged.`,
+        confirmLabel: "Delete service",
+        destructive: true,
+      }))
     )
       return;
     try {
@@ -36,13 +45,9 @@ export function Services({ notify }: { notify: (m: string) => void }) {
   }
   return (
     <>
-      <PageTitle
-        eyebrow="YOUR BEST WORK, ON REPEAT"
-        title="Services"
-        description="Reusable services and prices. Ready in a couple of clicks."
-      >
+      <PageTitle title="Services">
         <button
-          className="btn primary"
+          className={ui.btnPrimary}
           onClick={() =>
             setEdit({ name: "", description: "", price: 0, unit: "project" })
           }
@@ -51,9 +56,9 @@ export function Services({ notify }: { notify: (m: string) => void }) {
           Add service
         </button>
       </PageTitle>
-      <section className="panel">
-        <div className="filter-bar">
-          <div className="search">
+      <section className={ui.panel}>
+        <div className={ui.filterBar}>
+          <div className={ui.search}>
             <Search size={17} />
             <input
               aria-label="Search services"
@@ -62,7 +67,7 @@ export function Services({ notify }: { notify: (m: string) => void }) {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <span className="muted">
+          <span className={ui.muted}>
             {list?.length || 0} services · prices in default currency
           </span>
         </div>
@@ -72,31 +77,30 @@ export function Services({ notify }: { notify: (m: string) => void }) {
           <Spinner />
         ) : !list.length ? (
           <Empty
-            title="Save a little time, every time."
-            description="Add the services you offer most often, with their usual prices and descriptions."
+            title="No services found"
             action="Add service"
             onClick={() =>
               setEdit({ name: "", description: "", price: 0, unit: "project" })
             }
           />
         ) : (
-          <div className="service-grid">
+          <div className={styles.serviceGrid}>
             {list.map((s) => (
-              <article className="service-card" key={s.id}>
-                <div className="service-card-top">
-                  <span className="quick-icon">
+              <article className={styles.serviceCard} key={s.id}>
+                <div className={styles.serviceCardTop}>
+                  <span className={ui.quickIcon}>
                     <Layers size={20} />
                   </span>
                   <div>
                     <button
-                      className="icon-button"
+                      className={ui.iconButton}
                       aria-label={`Edit ${s.name}`}
                       onClick={() => setEdit(s)}
                     >
                       <Pencil size={15} />
                     </button>
                     <button
-                      className="icon-button danger-icon"
+                      className={ui.iconButtonDangerIcon}
                       aria-label={`Delete ${s.name}`}
                       onClick={() => remove(s)}
                     >
@@ -106,7 +110,7 @@ export function Services({ notify }: { notify: (m: string) => void }) {
                 </div>
                 <h3>{s.name}</h3>
                 <p>{s.description}</p>
-                <div className="service-price">
+                <div className={styles.servicePrice}>
                   <strong>
                     {money(s.price, settings.data?.currency || "IDR")}
                   </strong>
@@ -181,7 +185,7 @@ export function ServiceForm({
           onChange={(e) => set({ ...v, description: e.target.value })}
         />
       </Field>
-      <div className="form-grid">
+      <div className={ui.formGrid}>
         <Field label="Default price *">
           <input
             required
@@ -201,11 +205,11 @@ export function ServiceForm({
           />
         </Field>
       </div>
-      <div className="modal-footer">
-        <button className="btn" type="button" onClick={onClose}>
+      <div className={ui.modalFooter}>
+        <button className={ui.btn} type="button" onClick={onClose}>
           Cancel
         </button>
-        <button className="btn primary" disabled={busy}>
+        <button className={ui.btnPrimary} disabled={busy}>
           Save service
         </button>
       </div>

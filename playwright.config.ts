@@ -1,7 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { existsSync } from "node:fs";
+try {
+  process.loadEnvFile();
+} catch (e) {
+  if (e.code !== "ENOENT") throw e;
+}
 export default defineConfig({
   testDir: "./tests/browser",
   fullyParallel: false,
@@ -30,7 +33,10 @@ export default defineConfig({
       APP_ORIGIN: "http://127.0.0.1:3200",
       ADMIN_EMAIL: "browser@example.com",
       ADMIN_PASSWORD: "browser-test-password-only",
-      DATABASE_PATH: join(tmpdir(), `turudev-e2e-${process.pid}.sqlite`),
+      MYSQL_HOST: process.env.MYSQL_HOST || "127.0.0.1",
+      MYSQL_PORT: process.env.MYSQL_PORT || "3306",
+      MYSQL_ADMIN_USER: process.env.MYSQL_ADMIN_USER || "root",
+      MYSQL_ROOT_PASSWORD: process.env.MYSQL_ROOT_PASSWORD || "",
     },
   },
 });

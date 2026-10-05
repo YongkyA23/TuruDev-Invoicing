@@ -1,3 +1,6 @@
+import { ui } from "../components/styles";
+import { styles } from "./Invoices.styles";
+import { BrandMark } from "../components/Brand";
 import { useState, useEffect, type FormEvent } from "react";
 import {
   Layers,
@@ -43,6 +46,7 @@ import {
   InvoiceTable,
   type Navigate,
   statuses,
+  useConfirm,
 } from "../components/ui";
 import { ClientForm } from "../pages/Clients";
 import { BusinessFields } from "../pages/Settings";
@@ -81,19 +85,15 @@ export function InvoiceList({
   }
   return (
     <>
-      <PageTitle
-        eyebrow="KEEP THE GOOD WORK MOVING"
-        title="Invoices"
-        description="Create, manage, and get a clear view of every invoice."
-      >
-        <button className="btn primary" onClick={() => navigate("new")}>
+      <PageTitle title="Invoices">
+        <button className={ui.btnPrimary} onClick={() => navigate("new")}>
           <Plus size={17} />
           Create invoice
         </button>
       </PageTitle>
-      <section className="panel">
-        <div className="filter-bar">
-          <div className="search">
+      <section className={ui.panel}>
+        <div className={ui.filterBar}>
+          <div className={ui.search}>
             <Search size={17} />
             <input
               aria-label="Search invoices"
@@ -125,14 +125,14 @@ export function InvoiceList({
             ))}
           </select>
           <button
-            className={`btn ${archived ? "active-filter" : ""}`}
+            className={archived ? styles.btnActiveFilter : ui.btn}
             onClick={() => setArchived(!archived)}
           >
             <Archive size={15} />
             {archived ? "Including archived" : "Active invoices"}
           </button>
         </div>
-        <div className="date-filters">
+        <div className={styles.dateFilters}>
           <label>
             Issued from{" "}
             <input
@@ -153,7 +153,7 @@ export function InvoiceList({
           </label>
           {(query || status || client || from || to) && (
             <button
-              className="text-button"
+              className={ui.textButton}
               onClick={() => {
                 setQuery("");
                 setStatus("");
@@ -180,8 +180,8 @@ export function InvoiceList({
           />
         ) : (
           <Empty
-            title="No invoices here yet."
-            description="Create an invoice or adjust your filters to find what you're looking for."
+            title="No invoices found"
+            description="Adjust the filters or create an invoice."
             action="Create invoice"
             onClick={() => navigate("new")}
           />
@@ -194,18 +194,23 @@ export function InvoiceList({
 export function InvoicePaper({ invoice }: { invoice: Invoice }) {
   const totals = invoice.totals || calculate(invoice);
   return (
-    <div className="invoice-paper">
-      <div className="paper-top">
+    <div className={styles.invoicePaper}>
+      <div className={styles.paperTop}>
         <div>
           {invoice.business.logo && (
             <img
-              className="business-logo"
+              className={styles.businessLogo}
               src={invoice.business.logo}
               alt="Business logo"
             />
           )}
+          {!invoice.business.logo && invoice.business.name === "TuruDev" && (
+            <div className={styles.businessMark}>
+              <BrandMark />
+            </div>
+          )}
           <h2>{invoice.business.name}</h2>
-          <p className="pre-wrap">{invoice.business.address}</p>
+          <p className={ui.preWrap}>{invoice.business.address}</p>
           <p>
             {invoice.business.email}
             <br />
@@ -214,7 +219,7 @@ export function InvoicePaper({ invoice }: { invoice: Invoice }) {
           {invoice.business.website && <p>{invoice.business.website}</p>}
           {invoice.business.taxId && <p>Tax ID: {invoice.business.taxId}</p>}
         </div>
-        <div className="paper-meta">
+        <div className={styles.paperMeta}>
           <h1>INVOICE</h1>
           <strong>{invoice.number || "Assigned on save"}</strong>
           <dl>
@@ -227,11 +232,11 @@ export function InvoicePaper({ invoice }: { invoice: Invoice }) {
           </dl>
         </div>
       </div>
-      <div className="bill-to">
-        <span className="eyebrow">BILL TO</span>
+      <div className={styles.billTo}>
+        <span className={styles.eyebrow}>BILL TO</span>
         <h3>{invoice.client.name || "Select a client"}</h3>
         <p>{invoice.client.company}</p>
-        <p className="pre-wrap">{invoice.client.address}</p>
+        <p className={ui.preWrap}>{invoice.client.address}</p>
         <p>
           {invoice.client.email}
           <br />
@@ -239,29 +244,29 @@ export function InvoicePaper({ invoice }: { invoice: Invoice }) {
         </p>
         {invoice.client.taxId && <p>Tax ID: {invoice.client.taxId}</p>}
       </div>
-      <div className="table-wrap">
-        <table className="paper-items">
+      <div className={ui.tableWrap}>
+        <table className={styles.paperItems}>
           <thead>
             <tr>
               <th>Description</th>
               <th>Qty / unit</th>
-              <th className="align-right">Price</th>
-              <th className="align-right">Amount</th>
+              <th className={ui.alignRight}>Price</th>
+              <th className={ui.alignRight}>Amount</th>
             </tr>
           </thead>
           <tbody>
             {invoice.items.map((item, index) => (
               <tr key={index}>
-                <td className="pre-wrap">
+                <td className={ui.preWrap}>
                   {item.description || "Item description"}
                 </td>
                 <td>
                   {item.quantity} {item.unit}
                 </td>
-                <td className="align-right">
+                <td className={ui.alignRight}>
                   {money(item.price, invoice.currency)}
                 </td>
-                <td className="align-right">
+                <td className={ui.alignRight}>
                   {money(totals.amounts[index], invoice.currency)}
                 </td>
               </tr>
@@ -269,7 +274,7 @@ export function InvoicePaper({ invoice }: { invoice: Invoice }) {
           </tbody>
         </table>
       </div>
-      <div className="paper-totals">
+      <div className={styles.paperTotals}>
         <div>
           <span>Subtotal</span>
           <span>{money(totals.subtotal, invoice.currency)}</span>
@@ -287,17 +292,17 @@ export function InvoicePaper({ invoice }: { invoice: Invoice }) {
           <span>Tax ({invoice.tax}%)</span>
           <span>{money(totals.tax, invoice.currency)}</span>
         </div>
-        <div className="grand-total">
+        <div className={styles.grandTotal}>
           <span>Total</span>
           <strong>{money(totals.total, invoice.currency)}</strong>
         </div>
       </div>
-      <div className="paper-bottom">
+      <div className={styles.paperBottom}>
         {(invoice.payment.bank ||
           invoice.payment.accountName ||
           invoice.payment.accountNumber) && (
           <div>
-            <span className="eyebrow">PAYMENT INFORMATION</span>
+            <span className={styles.eyebrow}>PAYMENT INFORMATION</span>
             <p>
               {invoice.payment.bank}
               <br />
@@ -309,8 +314,8 @@ export function InvoicePaper({ invoice }: { invoice: Invoice }) {
         )}
         {invoice.notes && (
           <div>
-            <span className="eyebrow">NOTES</span>
-            <p className="pre-wrap">{invoice.notes}</p>
+            <span className={styles.eyebrow}>NOTES</span>
+            <p className={ui.preWrap}>{invoice.notes}</p>
           </div>
         )}
       </div>
@@ -327,6 +332,7 @@ export function InvoiceDetail({
   navigate: Navigate;
   notify: (m: string) => void;
 }) {
+  const confirm = useConfirm();
   const [revision, setRevision] = useState(0);
   const { data, error, retry } = useLoad<Invoice>(`/invoices/${id}`, revision);
   const [busy, setBusy] = useState(false);
@@ -340,7 +346,15 @@ export function InvoiceDetail({
         notify("New draft created");
         navigate(`edit/${i.id}`);
       } else if (type === "status") {
-        if (!confirm(`Mark ${data.number} as ${status}?`)) return;
+        if (
+          !(await confirm({
+            title: "Update invoice status?",
+            message: `Mark ${data.number} as ${status}?`,
+            confirmLabel: `Mark ${status}`,
+            destructive: status === "Cancelled",
+          }))
+        )
+          return;
         await api(`/invoices/${id}/status`, "PATCH", {
           status,
           version: data.version,
@@ -349,11 +363,15 @@ export function InvoiceDetail({
         notify("Invoice status updated");
       } else if (type === "delete") {
         if (
-          !confirm(
-            data.status === "Draft"
-              ? `Permanently delete draft ${data.number}?`
-              : `Archive ${data.number}? It will remain in invoice history.`,
-          )
+          !(await confirm({
+            title: data.status === "Draft" ? "Delete draft?" : "Archive invoice?",
+            message:
+              data.status === "Draft"
+                ? `Permanently delete draft ${data.number}?`
+                : `Archive ${data.number}? It will remain in invoice history.`,
+            confirmLabel: data.status === "Draft" ? "Delete draft" : "Archive invoice",
+            destructive: true,
+          }))
         )
           return;
         await api(`/invoices/${id}`, "DELETE");
@@ -374,7 +392,10 @@ export function InvoiceDetail({
   if (!data) return <Spinner />;
   return (
     <>
-      <button className="back-button" onClick={() => navigate("invoices")}>
+      <button
+        className={styles.backButton}
+        onClick={() => navigate("invoices")}
+      >
         <ArrowLeft size={15} />
         All invoices
       </button>
@@ -382,12 +403,12 @@ export function InvoiceDetail({
         title={data.number!}
         description={`${data.client.name} · ${displayDate(data.date)}${data.archived ? " · Archived" : ""}`}
       >
-        <button className="btn" onClick={() => navigate(`edit/${id}`)}>
+        <button className={ui.btn} onClick={() => navigate(`edit/${id}`)}>
           <Pencil size={16} />
           Edit
         </button>
         <button
-          className="btn"
+          className={ui.btn}
           disabled={busy}
           onClick={() => action("duplicate")}
         >
@@ -395,19 +416,19 @@ export function InvoiceDetail({
           Duplicate
         </button>
         <button
-          className="btn primary"
+          className={ui.btnPrimary}
           disabled={busy}
           onClick={() => action("pdf")}
         >
           {busy ? (
-            <LoaderCircle size={16} className="spin" />
+            <LoaderCircle size={16} className={ui.spin} />
           ) : (
             <Download size={16} />
           )}
           Download PDF
         </button>
       </PageTitle>
-      <div className="detail-toolbar">
+      <div className={styles.detailToolbar}>
         <Badge status={data.status} />
         <label>
           Update status{" "}
@@ -424,7 +445,7 @@ export function InvoiceDetail({
         </label>
         {data.archived ? (
           <button
-            className="text-button"
+            className={ui.textButton}
             disabled={busy}
             onClick={() => action("restore")}
           >
@@ -433,7 +454,7 @@ export function InvoiceDetail({
           </button>
         ) : (
           <button
-            className="text-button danger"
+            className={styles.textButtonDanger}
             disabled={busy}
             onClick={() => action("delete")}
           >
@@ -447,11 +468,6 @@ export function InvoiceDetail({
         )}
       </div>
       <InvoicePaper invoice={data} />
-      <p className="preview-caption">
-        <ShieldCheck size={14} />
-        This invoice uses saved snapshots of business, client, and payment
-        information.
-      </p>
     </>
   );
 }
@@ -467,6 +483,7 @@ export function InvoiceEditor({
   notify: (m: string) => void;
   setDirty: (v: boolean) => void;
 }) {
+  const confirm = useConfirm();
   const [v, setV] = useState<Invoice | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
@@ -532,7 +549,11 @@ export function InvoiceEditor({
     if (!v) return;
     if (v.dueDate < v.date && !v.confirmEarlyDue) {
       if (
-        !confirm("The due date is earlier than the invoice date. Save anyway?")
+        !(await confirm({
+          title: "Check due date",
+          message: "The due date is earlier than the invoice date. Save anyway?",
+          confirmLabel: "Save anyway",
+        }))
       )
         return;
       v.confirmEarlyDue = true;
@@ -577,42 +598,25 @@ export function InvoiceEditor({
   return (
     <>
       <button
-        className="back-button"
+        className={styles.backButton}
         onClick={() => navigate(id ? `invoice/${id}` : "invoices")}
       >
         <ArrowLeft size={15} />
         {id ? "Back to invoice" : "All invoices"}
       </button>
-      <PageTitle
-        title={id ? "Edit invoice" : "Create an invoice"}
-        description="A little reuse. A few details. Ready to send."
-      >
-        <button className="btn" onClick={() => setPreview(true)}>
-          <Eye size={16} />
-          Preview invoice
-        </button>
-        <button className="btn primary" form="invoice-form" disabled={busy}>
-          {busy ? (
-            <LoaderCircle size={16} className="spin" />
-          ) : (
-            <Check size={16} />
-          )}{" "}
-          {id ? "Save changes" : "Save draft"}
-        </button>
-      </PageTitle>
+      <PageTitle title={id ? "Edit invoice" : "Create an invoice"} />
       {error && <ErrorBox error={error} />}
       <form id="invoice-form" onSubmit={save}>
-        <div className="editor-layout">
-          <div className="editor-main">
-            <section className="panel form-panel">
-              <div className="section-title">
-                <span className="step-number">01</span>
+        <div className={styles.editorLayout}>
+          <div className={styles.editorMain}>
+            <section className={ui.panelFormPanel}>
+              <div className={ui.sectionTitle}>
+                <span className={styles.stepNumber}>01</span>
                 <div>
-                  <h2>The essentials</h2>
-                  <p>Every good invoice starts with a few details.</p>
+                  <h2>Invoice details</h2>
                 </div>
               </div>
-              <div className="form-grid four">
+              <div className={styles.formGridFour}>
                 <Field
                   label="Invoice number"
                   hint={
@@ -676,7 +680,7 @@ export function InvoiceEditor({
                   />
                 </Field>
               </div>
-              <div className="form-grid">
+              <div className={ui.formGrid}>
                 <Field label="Currency">
                   <select
                     value={v.currency}
@@ -701,18 +705,15 @@ export function InvoiceEditor({
                 </Field>
               </div>
             </section>
-            <section className="panel form-panel">
-              <div className="section-title">
-                <span className="step-number">02</span>
+            <section className={ui.panelFormPanel}>
+              <div className={ui.sectionTitle}>
+                <span className={styles.stepNumber}>02</span>
                 <div>
-                  <h2>Who is it for?</h2>
-                  <p>
-                    Saved details, ready to go. Customize them for this invoice.
-                  </p>
+                  <h2>Client</h2>
                 </div>
                 <button
                   type="button"
-                  className="text-button"
+                  className={ui.textButton}
                   onClick={() => setAddClient(true)}
                 >
                   <Plus size={15} />
@@ -748,8 +749,8 @@ export function InvoiceEditor({
                 </select>
               </Field>
               {v.clientId && (
-                <div className="snapshot-fields">
-                  <div className="form-grid">
+                <div className={styles.snapshotFields}>
+                  <div className={ui.formGrid}>
                     <Field label="Client name *">
                       <input
                         required
@@ -814,21 +815,20 @@ export function InvoiceEditor({
                       }
                     />
                   </Field>
-                  <small className="muted">
+                  <small className={ui.muted}>
                     Changes here apply only to this invoice.
                   </small>
                 </div>
               )}
             </section>
-            <section className="panel form-panel">
-              <div className="section-title">
-                <span className="step-number">03</span>
+            <section className={ui.panelFormPanel}>
+              <div className={ui.sectionTitle}>
+                <span className={styles.stepNumber}>03</span>
                 <div>
-                  <h2>The work, item by item</h2>
-                  <p>Add a saved service or make something custom.</p>
+                  <h2>Line items</h2>
                 </div>
               </div>
-              <div className="service-select">
+              <div className={styles.serviceSelect}>
                 <Layers size={17} />
                 <select
                   aria-label="Add saved service"
@@ -864,22 +864,22 @@ export function InvoiceEditor({
                 </select>
               </div>
               {v.currency !== settings.currency && (
-                <p className="note-box">
+                <p className={ui.noteBox}>
                   Saved service prices are in {settings.currency}. Adjust prices
                   for {v.currency}; currency conversion is not automatic.
                 </p>
               )}
-              <div className="item-labels">
+              <div className={styles.itemLabels}>
                 <span>Description</span>
                 <span>Qty</span>
                 <span>Unit</span>
                 <span>Unit price</span>
-                <span className="align-right">Amount</span>
+                <span className={ui.alignRight}>Amount</span>
                 <span />
               </div>
               {v.items.map((item, index) => (
-                <div className="item-row" key={index}>
-                  <label className="item-field">
+                <div className={styles.itemRow} key={index}>
+                  <label className={styles.itemField}>
                     <span>Description</span>
                     <textarea
                       aria-label={`Item ${index + 1} description`}
@@ -892,7 +892,7 @@ export function InvoiceEditor({
                       placeholder="Describe the work…"
                     />
                   </label>
-                  <label className="item-field">
+                  <label className={styles.itemField}>
                     <span>Quantity</span>
                     <input
                       aria-label={`Item ${index + 1} quantity`}
@@ -907,7 +907,7 @@ export function InvoiceEditor({
                       }
                     />
                   </label>
-                  <label className="item-field">
+                  <label className={styles.itemField}>
                     <span>Unit</span>
                     <input
                       aria-label={`Item ${index + 1} unit`}
@@ -917,7 +917,7 @@ export function InvoiceEditor({
                       }
                     />
                   </label>
-                  <label className="item-field">
+                  <label className={styles.itemField}>
                     <span>Unit price</span>
                     <input
                       aria-label={`Item ${index + 1} price`}
@@ -932,13 +932,13 @@ export function InvoiceEditor({
                       }
                     />
                   </label>
-                  <span className="item-amount">
+                  <span className={styles.itemAmount}>
                     {money(totals.amounts[index], v.currency)}
                   </span>
-                  <div className="item-actions">
+                  <div className={styles.itemActions}>
                     <button
                       type="button"
-                      className="icon-button"
+                      className={ui.iconButton}
                       aria-label={`Move item ${index + 1} up`}
                       disabled={index === 0}
                       onClick={() => moveItem(index, -1)}
@@ -947,7 +947,7 @@ export function InvoiceEditor({
                     </button>
                     <button
                       type="button"
-                      className="icon-button"
+                      className={ui.iconButton}
                       aria-label={`Move item ${index + 1} down`}
                       disabled={index === v.items.length - 1}
                       onClick={() => moveItem(index, 1)}
@@ -956,7 +956,7 @@ export function InvoiceEditor({
                     </button>
                     <button
                       type="button"
-                      className="icon-button danger-icon"
+                      className={ui.iconButtonDangerIcon}
                       aria-label={`Remove item ${index + 1}`}
                       disabled={v.items.length === 1}
                       onClick={() =>
@@ -970,7 +970,7 @@ export function InvoiceEditor({
               ))}
               <button
                 type="button"
-                className="btn add-item"
+                className={styles.btnAddItem}
                 disabled={v.items.length >= 100}
                 onClick={() =>
                   update({
@@ -984,7 +984,7 @@ export function InvoiceEditor({
                 <Plus size={15} />
                 Add custom item
               </button>
-              <div className="form-grid adjustments">
+              <div className={styles.formGridAdjustments}>
                 <Field label="Discount type">
                   <select
                     value={v.discountType}
@@ -1023,15 +1023,14 @@ export function InvoiceEditor({
                 </Field>
               </div>
             </section>
-            <section className="panel form-panel">
-              <div className="section-title">
-                <span className="step-number">04</span>
+            <section className={ui.panelFormPanel}>
+              <div className={ui.sectionTitle}>
+                <span className={styles.stepNumber}>04</span>
                 <div>
-                  <h2>The finishing touches</h2>
-                  <p>Payment details and a little thank you.</p>
+                  <h2>Payment and notes</h2>
                 </div>
               </div>
-              <div className="form-grid three">
+              <div className={styles.formGridThree}>
                 <Field label="Bank name">
                   <input
                     value={v.payment.bank}
@@ -1073,7 +1072,7 @@ export function InvoiceEditor({
                   onChange={(e) => update({ notes: e.target.value })}
                 />
               </Field>
-              <details className="business-details">
+              <details className={styles.businessDetails}>
                 <summary>
                   Customize business information for this invoice{" "}
                   <ChevronDown size={15} />
@@ -1085,23 +1084,22 @@ export function InvoiceEditor({
               </details>
             </section>
           </div>
-          <aside className="summary-panel panel">
-            <span className="eyebrow">A QUICK LOOK</span>
+          <aside className={styles.summaryPanelPanel}>
             <h2>Invoice summary</h2>
-            <p>{v.client.name || "Your next great client"}</p>
-            <div className="summary-line">
+            <p>{v.client.name || "No client selected"}</p>
+            <div className={styles.summaryLine}>
               <span>Subtotal</span>
               <strong>{money(totals.subtotal, v.currency)}</strong>
             </div>
-            <div className="summary-line">
+            <div className={styles.summaryLine}>
               <span>Discount</span>
               <span>−{money(totals.discount, v.currency)}</span>
             </div>
-            <div className="summary-line">
+            <div className={styles.summaryLine}>
               <span>Tax ({v.tax}%)</span>
               <span>{money(totals.tax, v.currency)}</span>
             </div>
-            <div className="summary-total">
+            <div className={styles.summaryTotal}>
               <span>Total due</span>
               <strong>{money(totals.total, v.currency)}</strong>
             </div>
@@ -1109,34 +1107,30 @@ export function InvoiceEditor({
               <Clock3 size={14} />
               Due {displayDate(v.dueDate)}
             </small>
-            <button className="btn primary full" disabled={busy}>
+            <button className={ui.btnPrimaryFull} disabled={busy}>
               {busy ? "Saving…" : id ? "Save changes" : "Save draft"}
               <Check size={16} />
             </button>
             <button
-              className="btn full"
+              className={styles.btnFull}
               type="button"
               onClick={() => setPreview(true)}
             >
               <Eye size={16} />
               Preview invoice
             </button>
-            <p className="summary-note">
-              <ShieldCheck size={14} />
-              Your details are saved with this invoice.
-            </p>
           </aside>
         </div>
       </form>
       {preview && (
         <Modal title="Invoice preview" onClose={() => setPreview(false)}>
           <InvoicePaper invoice={v} />
-          <div className="modal-footer">
-            <button className="btn" onClick={() => setPreview(false)}>
+          <div className={ui.modalFooter}>
+            <button className={ui.btn} onClick={() => setPreview(false)}>
               Continue editing
             </button>
             <button
-              className="btn primary"
+              className={ui.btnPrimary}
               onClick={() => {
                 setPreview(false);
                 (

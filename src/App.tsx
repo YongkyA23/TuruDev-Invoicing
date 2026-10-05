@@ -1,3 +1,5 @@
+import { ui } from "./components/styles";
+import { styles } from "./App.styles";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   LayoutDashboard,
@@ -10,17 +12,17 @@ import {
   X,
   ChevronRight,
   CircleCheck,
-  Leaf,
 } from "lucide-react";
 import type { Settings } from "./types";
 import { api, setCsrf } from "./lib";
-import { Spinner, Empty, type Navigate } from "./components/ui";
+import { Spinner, Empty, useConfirm, type Navigate } from "./components/ui";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { InvoiceList, InvoiceDetail, InvoiceEditor } from "./pages/Invoices";
 import { Clients } from "./pages/Clients";
 import { Services } from "./pages/Services";
 import { SettingsPage } from "./pages/Settings";
+import { BrandMark } from "./components/Brand";
 
 export function App() {
   const [email, setEmail] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export function App() {
   const dirty = useRef(false);
   const routeRef = useRef(route);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirm = useConfirm();
   const setDirty = (v: boolean) => {
     dirty.current = v;
   };
@@ -39,8 +42,15 @@ export function App() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(""), 6000);
   };
-  const navigate: Navigate = (next) => {
-    if (dirty.current && !confirm("You have unsaved changes. Leave this page?"))
+  const navigate: Navigate = async (next) => {
+    if (
+      dirty.current &&
+      !(await confirm({
+        title: "Leave this page?",
+        message: "You have unsaved changes. Leave this page?",
+        confirmLabel: "Leave page",
+      }))
+    )
       return;
     dirty.current = false;
     routeRef.current = next;
@@ -68,20 +78,32 @@ export function App() {
         e.returnValue = "";
       }
     };
+    let handlingHashChange = false;
     const hash = () => {
       const next = location.hash.slice(1) || "dashboard";
-      if (next === routeRef.current) return;
-      if (
-        dirty.current &&
-        !confirm("You have unsaved changes. Leave this page?")
-      ) {
-        location.hash = routeRef.current;
-        return;
-      }
-      dirty.current = false;
-      routeRef.current = next;
-      setRoute(next);
-      setMenu(false);
+      if (next === routeRef.current || handlingHashChange) return;
+      handlingHashChange = true;
+      void (async () => {
+        try {
+          if (
+            dirty.current &&
+            !(await confirm({
+              title: "Leave this page?",
+              message: "You have unsaved changes. Leave this page?",
+              confirmLabel: "Leave page",
+            }))
+          ) {
+            location.hash = routeRef.current;
+            return;
+          }
+          dirty.current = false;
+          routeRef.current = next;
+          setRoute(next);
+          setMenu(false);
+        } finally {
+          handlingHashChange = false;
+        }
+      })();
     };
     window.addEventListener("session-expired", expired);
     window.addEventListener("beforeunload", before);
@@ -91,9 +113,16 @@ export function App() {
       window.removeEventListener("beforeunload", before);
       window.removeEventListener("hashchange", hash);
     };
-  }, []);
+  }, [confirm]);
   async function logout() {
-    if (dirty.current && !confirm("Discard unsaved changes and sign out?"))
+    if (
+      dirty.current &&
+      !(await confirm({
+        title: "Discard changes and sign out?",
+        message: "Your unsaved changes will be lost.",
+        confirmLabel: "Sign out",
+      }))
+    )
       return;
     try {
       await api("/auth/logout", "POST");
@@ -110,7 +139,6 @@ export function App() {
       <Login
         onLogin={(e) => {
           setEmail(e);
-          notify("Welcome to your workspace");
         }}
       />
     );
@@ -157,28 +185,27 @@ export function App() {
   else
     page = (
       <Empty
-        title="This page wandered off."
-        description="Head back to your workspace to pick up where you left off."
+        title="Page not found"
+        description="Return to the overview."
         action="Go to overview"
         onClick={() => navigate("dashboard")}
       />
     );
   return (
-    <div className="app-shell">
+    <div className={styles.appShell}>
       {menu && (
-        <div className="sidebar-overlay" onClick={() => setMenu(false)} />
+        <div className={styles.sidebarOverlay} onClick={() => setMenu(false)} />
       )}
-      <aside className={`sidebar ${menu ? "open" : ""}`}>
+      <aside className={menu ? styles.sidebarOpen : styles.sidebar}>
         <button
-          className="brand plain-button"
+          className={styles.brandPlainButton}
           onClick={() => navigate("dashboard")}
         >
-          <span className="brand-mark">t.</span>
+          <BrandMark />
           <span>
             TuruDev<small>INVOICING WORKSPACE</small>
           </span>
         </button>
-        <span className="nav-label">WORKSPACE</span>
         <nav aria-label="Main navigation">
           {navigation.map(({ key, label, icon: Icon }) => (
             <button
@@ -188,27 +215,20 @@ export function App() {
             >
               <Icon size={19} />
               {label}
-              {active === key && <span className="nav-dot" />}
+              {active === key && <span className={styles.navDot} />}
             </button>
           ))}
         </nav>
-        <div className="sidebar-tip">
-          <Leaf size={23} />
-          <strong>A little less busywork.</strong>
-          <p>
-            Save the details once.
-            <br />
-            Make room for good work.
-          </p>
-        </div>
-        <div className="sidebar-user">
-          <span className="avatar dark">{email.slice(0, 2).toUpperCase()}</span>
+        <div className={styles.sidebarUser}>
+          <span className={styles.avatarDark}>
+            {email.slice(0, 2).toUpperCase()}
+          </span>
           <span>
-            <strong>Team workspace</strong>
+            <strong>Administrator</strong>
             <small>{email}</small>
           </span>
           <button
-            className="icon-button"
+            className={ui.iconButton}
             title="Sign out"
             aria-label="Sign out"
             onClick={logout}
@@ -217,40 +237,29 @@ export function App() {
           </button>
         </div>
       </aside>
-      <div className="main-shell">
-        <header className="topbar">
+      <div className={styles.mainShell}>
+        <header className={styles.topbar}>
           <button
-            className="icon-button mobile-menu"
+            className={styles.iconButtonMobileMenu}
             aria-label="Open navigation"
             onClick={() => setMenu(!menu)}
           >
             <Menu size={22} />
           </button>
-          <div className="breadcrumb">
+          <div className={styles.breadcrumb}>
             Workspace <ChevronRight size={14} />
             <strong>
               {navigation.find((n) => n.key === active)?.label || "Overview"}
             </strong>
           </div>
-          <div className="topbar-right">
-            <span className="workspace-live">
-              <span className="tiny-dot" />
-              Team workspace
-            </span>
-            <span className="avatar">{email.slice(0, 2).toUpperCase()}</span>
+          <div className={styles.topbarRight}>
+            <span className={ui.avatar}>{email.slice(0, 2).toUpperCase()}</span>
           </div>
         </header>
-        <main>{page}</main>
-        <footer className="app-footer">
-          <span>TuruDev · Thoughtfully simple invoicing.</span>
-          <span>
-            <Leaf size={13} />
-            Room for the work that matters.
-          </span>
-        </footer>
+        <main className={styles.workspaceContent}>{page}</main>
       </div>
       {toast && (
-        <div className="toast" role="status">
+        <div className={styles.toast} role="status">
           <CircleCheck size={19} />
           <span>{toast}</span>
           <button

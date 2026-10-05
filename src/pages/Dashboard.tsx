@@ -1,3 +1,5 @@
+import { ui } from "../components/styles";
+import { styles } from "./Dashboard.styles";
 import {
   FileText,
   Users,
@@ -36,53 +38,45 @@ export function Dashboard({
   const amounts = currencyKeys.length ? currencyKeys : ["IDR"];
   return (
     <>
-      <PageTitle
-        eyebrow="A LITTLE CLARITY FOR YOUR DAY"
-        title="Your business, at a glance."
-        description="Less time on paperwork. More time doing what you love."
-      >
-        <button className="btn primary" onClick={() => navigate("new")}>
+      <PageTitle title="Overview">
+        <button className={ui.btnPrimary} onClick={() => navigate("new")}>
           <Plus size={17} />
           Create invoice
         </button>
       </PageTitle>
-      <div className="welcome-banner">
+      <div className={styles.welcomeBanner}>
         <div>
-          <span className="pill">
-            <span className="tiny-dot" /> YOUR INVOICING, SIMPLIFIED
-          </span>
-          <h2>From good work to getting paid.</h2>
-          <p>Your clients, services, and invoices. All in one calm place.</p>
-          <button className="text-button" onClick={() => navigate("new")}>
+          <h2>Create an invoice</h2>
+          <button className={ui.textButton} onClick={() => navigate("new")}>
             Create your next invoice <ArrowUpRight size={16} />
           </button>
         </div>
-        <div className="banner-art" aria-hidden="true">
-          <div className="paper">
-            <div className="paper-head">
+        <div className={styles.bannerArt} aria-hidden="true">
+          <div className={styles.paper}>
+            <div className={styles.paperHead}>
               <FileText size={23} />
               <span>INVOICE</span>
             </div>
-            <div className="paper-line" />
-            <div className="paper-line short" />
-            <div className="paper-rule" />
-            <div className="paper-dots">
+            <div className={styles.paperLine} />
+            <div className={styles.paperLineShort} />
+            <div className={styles.paperRule} />
+            <div className={styles.paperDots}>
               <span />
               <span />
             </div>
-            <div className="paper-rule" />
-            <div className="paper-paid">
+            <div className={styles.paperRule} />
+            <div className={styles.paperPaid}>
               <CircleCheck size={17} /> Ready to send
             </div>
           </div>
-          <span className="art-badge">
+          <span className={styles.artBadge}>
             <Check size={22} />
           </span>
-          <Leaf className="art-leaf" size={48} />
+          <Leaf className={styles.artLeaf} size={48} />
         </div>
       </div>
-      <div className="stats">
-        <div className="stat">
+      <div className={styles.stats}>
+        <div className={styles.stat}>
           <span>
             Total invoices <FileText size={18} />
           </span>
@@ -92,34 +86,34 @@ export function Dashboard({
             {data.status.Paid} paid
           </small>
         </div>
-        <div className="stat">
+        <div className={styles.stat}>
           <span>
             Total invoiced <Wallet size={18} />
           </span>
           {amounts.map((c) => (
-            <strong className="money-stat" key={c}>
+            <strong className={styles.moneyStat} key={c}>
               {money(data.amounts[c]?.invoiced || 0, c)}
             </strong>
           ))}
           <small>Active invoices, excluding cancelled</small>
         </div>
-        <div className="stat">
+        <div className={styles.stat}>
           <span>
             Payments received <CircleCheck size={18} />
           </span>
           {amounts.map((c) => (
-            <strong className="money-stat" key={c}>
+            <strong className={styles.moneyStat} key={c}>
               {money(data.amounts[c]?.paid || 0, c)}
             </strong>
           ))}
           <small>{data.status.Paid} invoices marked paid</small>
         </div>
-        <div className="stat">
+        <div className={styles.stat}>
           <span>
             Awaiting payment <Clock3 size={18} />
           </span>
           {amounts.map((c) => (
-            <strong className="money-stat" key={c}>
+            <strong className={styles.moneyStat} key={c}>
               {money(data.amounts[c]?.outstanding || 0, c)}
             </strong>
           ))}
@@ -128,15 +122,17 @@ export function Dashboard({
           </small>
         </div>
       </div>
-      <section className="panel">
-        <div className="panel-heading">
+      <section className={ui.panel}>
+        <div className={styles.panelHeading}>
           <div>
             <h2>
-              Recent invoices <span className="count">{data.total}</span>
+              Recent invoices <span className={styles.count}>{data.total}</span>
             </h2>
-            <p>Your latest work, neatly kept.</p>
           </div>
-          <button className="text-button" onClick={() => navigate("invoices")}>
+          <button
+            className={ui.textButton}
+            onClick={() => navigate("invoices")}
+          >
             View all invoices <ArrowUpRight size={16} />
           </button>
         </div>
@@ -148,31 +144,28 @@ export function Dashboard({
           />
         ) : (
           <Empty
-            title="Your first invoice starts here."
-            description="Save a client, add your services, and turn your work into a professional invoice."
+            title="No invoices yet"
             action="Create invoice"
             onClick={() => navigate("new")}
           />
         )}
       </section>
-      <div className="quick-links">
+      <div className={styles.quickLinks}>
         <button onClick={() => navigate("clients")}>
-          <span className="quick-icon">
+          <span className={ui.quickIcon}>
             <Users size={20} />
           </span>
           <span>
-            <strong>Good relationships, saved.</strong>
-            <small>Keep your client details ready for next time.</small>
+            <strong>Clients</strong>
           </span>
           <ArrowUpRight size={18} />
         </button>
         <button onClick={() => navigate("services")}>
-          <span className="quick-icon">
+          <span className={ui.quickIcon}>
             <Layers size={20} />
           </span>
           <span>
-            <strong>Your best work, on repeat.</strong>
-            <small>Save your services and skip the retyping.</small>
+            <strong>Services</strong>
           </span>
           <ArrowUpRight size={18} />
         </button>

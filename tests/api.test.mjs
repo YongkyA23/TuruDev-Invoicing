@@ -1,10 +1,10 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { createConnection } from "mysql2/promise";
 import {
   calculate,
   defaults,
@@ -12,11 +12,25 @@ import {
   invoiceSchema,
 } from "../server/domain.mjs";
 
+try {
+  process.loadEnvFile();
+} catch (e) {
+  if (e.code !== "ENOENT") throw e;
+}
+
 const dir = mkdtempSync(join(tmpdir(), "turudev-api-"));
 const port = 36000 + Math.floor(Math.random() * 3000),
   base = `http://127.0.0.1:${port}`;
 const password = "test-only-password-please-replace";
+const database = `turudev_api_test_${process.pid}`;
+const mysqlAdmin = {
+  host: process.env.MYSQL_HOST || "127.0.0.1",
+  port: Number(process.env.MYSQL_PORT || 3306),
+  user: process.env.MYSQL_ADMIN_USER || "root",
+  password: process.env.MYSQL_ROOT_PASSWORD || "",
+};
 let server,
+  databaseCreated = false,
   output = "",
   cookie = "",
   csrf = "",
@@ -30,8 +44,23 @@ const config = {
   APP_ORIGIN: base,
   ADMIN_EMAIL: "test@example.com",
   ADMIN_PASSWORD: password,
-  DATABASE_PATH: join(dir, "test.sqlite"),
+  MYSQL_HOST: mysqlAdmin.host,
+  MYSQL_PORT: String(mysqlAdmin.port),
+  MYSQL_DATABASE: database,
+  MYSQL_USER: mysqlAdmin.user,
+  MYSQL_PASSWORD: mysqlAdmin.password,
 };
+async function createTestDatabase() {
+  const connection = await createConnection(mysqlAdmin);
+  try {
+    await connection.query(
+      `CREATE DATABASE \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+    );
+    databaseCreated = true;
+  } finally {
+    await connection.end();
+  }
+}
 async function start() {
   server = spawn(process.execPath, ["server/index.mjs"], {
     env: config,
@@ -50,6 +79,7 @@ async function start() {
   throw new Error("Startup failed: " + output);
 }
 async function stop() {
+  if (!server || server.exitCode !== null) return;
   server.kill("SIGTERM");
   await new Promise((resolve) => server.once("exit", resolve));
 }
@@ -71,9 +101,20 @@ async function json(path, method = "GET", body) {
   assert.ok(r.ok, `${method} ${path}: ${r.status} ${JSON.stringify(v)}`);
   return v;
 }
-before(start);
+before(async () => {
+  await createTestDatabase();
+  await start();
+});
 after(async () => {
   await stop();
+  if (databaseCreated) {
+    const connection = await createConnection(mysqlAdmin);
+    try {
+      await connection.query(`DROP DATABASE IF EXISTS \`${database}\``);
+    } finally {
+      await connection.end();
+    }
+  }
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -440,24 +481,19 @@ test("password changes revoke sessions and allow only the new password", async (
 });
 
 test("operator backup preserves invoice data and refuses to overwrite a backup", async () => {
-  const backupPath = join(dir, "snapshot.sqlite");
+  const backupPath = join(dir, "snapshot.json");
   const env = { ...config, BACKUP_PATH: backupPath };
   const result = spawnSync(process.execPath, ["scripts/backup.mjs"], {
     env,
     encoding: "utf8",
   });
   assert.equal(result.status, 0, result.stderr);
-  const backup = new DatabaseSync(backupPath, { readOnly: true });
+  const backup = JSON.parse(readFileSync(backupPath, "utf8"));
+  assert.equal(backup.format, "turudev-mysql-backup-v1");
   assert.equal(
-    backup.prepare("PRAGMA integrity_check").get().integrity_check,
-    "ok",
-  );
-  assert.equal(
-    backup.prepare("SELECT number FROM invoices WHERE id=?").get(original.id)
-      .number,
+    backup.tables.invoices.find((row) => row.id === original.id).number,
     original.number,
   );
-  backup.close();
   const repeated = spawnSync(process.execPath, ["scripts/backup.mjs"], {
     env,
     encoding: "utf8",

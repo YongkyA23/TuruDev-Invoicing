@@ -1,16 +1,50 @@
 services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}
+    ports:
+      - "127.0.0.1:${MYSQL_FORWARD_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysql -u\"$${MYSQL_USER}\" -p\"$${MYSQL_PASSWORD}\" -h 127.0.0.1 -e 'SELECT 1' >/dev/null 2>&1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   invoices:
     build: .
     restart: unless-stopped
     init: true
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
       - "127.0.0.1:3000:3000"
     environment:
       ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set a strong ADMIN_PASSWORD}
       APP_ORIGIN: ${APP_ORIGIN:?Set the public HTTPS origin}
+      NODE_ENV: ${NODE_ENV:-development}
       TRUST_PROXY: "1"
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?Set MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}
     volumes:
-      - invoices-data:/app/data
+      - invoices-backups:/app/data/backups
+
 volumes:
-  invoices-data:
+  mysql-data:
+  invoices-backups:

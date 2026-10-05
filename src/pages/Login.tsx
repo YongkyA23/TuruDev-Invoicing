@@ -1,16 +1,17 @@
+import { ui } from "../components/styles";
+import { styles } from "./Login.styles";
 import { useState, type FormEvent } from "react";
 import {
   ArrowUpRight,
   Check,
   LoaderCircle,
-  ShieldCheck,
   LockKeyhole,
   Mail,
-  Leaf,
   Sparkles,
 } from "lucide-react";
 import { api, setCsrf } from "../lib";
 import { ErrorBox, Field } from "../components/ui";
+import { BrandMark } from "../components/Brand";
 
 export function Login({ onLogin }: { onLogin: (email: string) => void }) {
   const [email, setEmail] = useState("");
@@ -36,70 +37,51 @@ export function Login({ onLogin }: { onLogin: (email: string) => void }) {
     }
   }
   return (
-    <div className="login">
-      <section className="login-story">
-        <a className="brand" href="#">
-          <span className="brand-mark">t.</span>
+    <div className={styles.login}>
+      <section className={styles.loginStory}>
+        <a className={styles.brand} href="#">
+          <BrandMark />
           <span>
             TuruDev<small>INVOICING WORKSPACE</small>
           </span>
         </a>
-        <div className="story-content">
-          <span className="pill">
-            <Leaf size={13} />
-            Less admin. More creating.
-          </span>
+        <div className={styles.storyContent}>
           <h1>
-            Good work.
-            <br />
-            Great invoices.
+            TuruDev <br />
+            Invoicing
           </h1>
-          <p>
-            A little less paperwork, a little more peace of mind.
-            <br />
-            Your team's invoicing, thoughtfully simplified.
-          </p>
-          <div className="invoice-illustration">
-            <div className="illustration-top">
-              <span className="brand-mark">t.</span>
-              <span>
-                INVOICE
-                <br />
-                <small>Made for your next project</small>
-              </span>
-              <span className="illustration-check">
+          <div className={styles.invoiceIllustration} aria-hidden="true">
+            <div className={styles.illustrationTop}>
+              <BrandMark />
+              <span>INVOICE</span>
+              <span className={styles.illustrationCheck}>
                 <Check />
               </span>
             </div>
-            <div className="illustration-line wide" />
-            <div className="illustration-line" />
-            <div className="illustration-row">
+            <div className={styles.illustrationLineWide} />
+            <div className={styles.illustrationLine} />
+            <div className={styles.illustrationRow}>
               <span>Website development</span>
               <span>01</span>
             </div>
-            <div className="illustration-row">
-              <span>Thoughtful design</span>
+            <div className={styles.illustrationRow}>
+              <span>Design services</span>
               <span>02</span>
             </div>
-            <div className="illustration-total">
-              <span>Ready when you are</span>
+            <div className={styles.illustrationTotal}>
+              <span>Total</span>
               <Sparkles size={20} />
             </div>
           </div>
         </div>
-        <span className="story-footer">
-          Simple by design. Built for your team.
-        </span>
       </section>
-      <section className="login-form">
+      <section className={styles.loginForm}>
         <div>
-          <span className="eyebrow">YOUR WORKSPACE AWAITS</span>
-          <h2>Welcome back.</h2>
-          <p>Sign in to keep your business moving.</p>
+          <h2>Sign in</h2>
           <form onSubmit={submit}>
             {error && <ErrorBox error={error} />}
             <Field label="Email address">
-              <div className="input-icon">
+              <div className={styles.inputIcon}>
                 <Mail size={17} />
                 <input
                   type="email"
@@ -112,7 +94,7 @@ export function Login({ onLogin }: { onLogin: (email: string) => void }) {
               </div>
             </Field>
             <Field label="Password">
-              <div className="input-icon">
+              <div className={styles.inputIcon}>
                 <LockKeyhole size={17} />
                 <input
                   type="password"
@@ -124,21 +106,18 @@ export function Login({ onLogin }: { onLogin: (email: string) => void }) {
                 />
               </div>
             </Field>
-            <button className="btn primary full" disabled={busy}>
+            <button className={ui.btnPrimaryFull} disabled={busy}>
               {busy ? (
-                <LoaderCircle className="spin" size={17} />
+                <LoaderCircle className={ui.spin} size={17} />
               ) : (
                 <ArrowUpRight size={17} />
               )}
-              Sign in to workspace
+              Sign in
             </button>
           </form>
-          <p className="secure-note">
-            <ShieldCheck size={15} />A private workspace for your team.
-          </p>
         </div>
-        <small className="login-copyright">
-          © {new Date().getFullYear()} TuruDev. Made to make work easier.
+        <small className={styles.loginCopyright}>
+          © {new Date().getFullYear()} TuruDev
         </small>
       </section>
     </div>

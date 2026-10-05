@@ -1,30 +1,37 @@
 # syntax=docker/dockerfile:1
-FROM node:24-bookworm-slim AS build
+FROM oven/bun:1.3.11 AS bun
+FROM node:24-bookworm-slim AS tooling
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
-COPY package.json package-lock.json ./
+FROM tooling AS build
+COPY package.json bun.lock ./
 RUN --mount=type=secret,id=proxy_ca \
     export NODE_USE_ENV_PROXY=1; \
     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi; \
-    npm ci --fetch-retries=1 --fetch-timeout=30000
+    bun install --frozen-lockfile
 COPY index.html vite.config.ts tsconfig.json ./
 COPY src ./src
 COPY public ./public
-RUN npm run build
+RUN bun run build
 
-FROM node:24-bookworm-slim AS runtime
-ENV NODE_ENV=production PORT=3000 DATABASE_PATH=/app/data/invoices.sqlite
-WORKDIR /app
-COPY package.json package-lock.json ./
+FROM tooling AS production-dependencies
+COPY package.json bun.lock ./
 RUN --mount=type=secret,id=proxy_ca \
     export NODE_USE_ENV_PROXY=1; \
     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi; \
-    npm ci --omit=dev --fetch-retries=1 --fetch-timeout=30000 && npm cache clean --force
+    bun install --production --frozen-lockfile
+
+FROM node:24-bookworm-slim AS runtime
+ENV NODE_ENV=production PORT=3000
+WORKDIR /app
+COPY package.json bun.lock ./
+COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY server ./server
-COPY scripts/backup.mjs scripts/reset-admin.mjs scripts/smoke.mjs ./scripts/
+COPY scripts/backup.mjs scripts/reset-admin.mjs scripts/restore.mjs scripts/smoke.mjs ./scripts/
 RUN chmod -R a+rX /app/server /app/scripts /app/dist \
-    && chmod a+r /app/package.json /app/package-lock.json \
-    && mkdir -p /app/data && chown node:node /app/data
+    && chmod a+r /app/package.json /app/bun.lock \
+    && mkdir -p /app/data/backups && chown -R node:node /app/data
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

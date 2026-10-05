@@ -12,6 +12,8 @@
     "build": "tsc && vite build",
     "start": "node server/index.mjs",
     "setup:local": "node scripts/setup-local.mjs",
+    "db:migrate-sqlite": "node scripts/migrate-sqlite-to-mysql.mjs",
+    "restore": "node scripts/restore.mjs",
     "test": "node --test tests/api.test.mjs",
     "test:e2e": "playwright test",
     "check": "tsc --noEmit",
@@ -45,6 +47,7 @@
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "lucide-react": "^1.51.0",
+    "mysql2": "^3.24.5",
     "pdfkit": "^0.20.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -52,11 +55,13 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "prettier": "^3.9.9",
+    "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.2"
   }

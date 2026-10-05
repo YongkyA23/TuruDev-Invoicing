@@ -1,6 +1,18 @@
 import PDFDocument from "pdfkit";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const brandLogo = fileURLToPath(
+  new URL("../public/turudev-logo.png", import.meta.url),
+);
+function drawBrandMark(doc, x, y) {
+  doc.save();
+  try {
+    doc.roundedRect(x, y, 40, 40, 11).clip();
+    doc.image(brandLogo, x - 43, y - 36.4, { width: 126, height: 126 });
+  } finally {
+    doc.restore();
+  }
+}
 export function createPdf(invoice, response) {
   const doc = new PDFDocument({
     size: "A4",
@@ -36,13 +48,13 @@ export function createPdf(invoice, response) {
     doc
       .font("Strong")
       .fontSize(8)
-      .fillColor("#68706a")
+      .fillColor("#64748b")
       .text(s, x, y, { width: w });
   const body = (s, x, y, w = width, size = 10) =>
     doc
       .font("Body")
       .fontSize(size)
-      .fillColor("#253329")
+      .fillColor("#26374e")
       .text(s || "", x, y, { width: w });
   const room = (h) => {
     if (doc.y + h > 770) {
@@ -50,6 +62,7 @@ export function createPdf(invoice, response) {
       doc.y = 48;
     }
   };
+  let hasLogo = false;
   if (invoice.business.logo) {
     try {
       doc.image(
@@ -58,15 +71,28 @@ export function createPdf(invoice, response) {
         48,
         { fit: [70, 44] },
       );
+      hasLogo = true;
     } catch {
       /* Invalid image bytes never prevent invoice export. */
     }
   }
-  const top = invoice.business.logo ? 105 : 48;
+  if (
+    !hasLogo &&
+    invoice.business.name === "TuruDev" &&
+    existsSync(brandLogo)
+  ) {
+    try {
+      drawBrandMark(doc, 48, 48);
+      hasLogo = true;
+    } catch {
+      /* A missing or invalid brand mark never prevents invoice export. */
+    }
+  }
+  const top = hasLogo ? 105 : 48;
   doc
     .font("Strong")
     .fontSize(20)
-    .fillColor("#405a41")
+    .fillColor("#2378bc")
     .text(invoice.business.name, 48, top, { width: 280 });
   body(
     [
@@ -87,7 +113,7 @@ export function createPdf(invoice, response) {
   doc
     .font("Strong")
     .fontSize(28)
-    .fillColor("#253329")
+    .fillColor("#26374e")
     .text("INVOICE", 330, 48, { width: 217, align: "right" });
   body(invoice.number, 330, 88, 217);
   const metadataY = doc.y + 14;
@@ -103,7 +129,7 @@ export function createPdf(invoice, response) {
   doc
     .font("Strong")
     .fontSize(13)
-    .fillColor("#253329")
+    .fillColor("#26374e")
     .text(invoice.client.name, 48, y, { width });
   y = doc.y + 5;
   body(
@@ -124,7 +150,7 @@ export function createPdf(invoice, response) {
   doc.y += 25;
   const header = () => {
     y = doc.y;
-    doc.rect(48, y, width, 28).fill("#eef1eb");
+    doc.rect(48, y, width, 28).fill("#eaf3fb");
     label("DESCRIPTION", 58, y + 10, 250);
     label("QTY / UNIT", 317, y + 10, 75);
     label("PRICE", 398, y + 10, 70);
@@ -154,7 +180,7 @@ export function createPdf(invoice, response) {
     doc
       .moveTo(48, y + h - 8)
       .lineTo(right, y + h - 8)
-      .strokeColor("#e3e7e1")
+      .strokeColor("#e1e8f0")
       .stroke();
     doc.y = y + h;
   });
@@ -170,7 +196,7 @@ export function createPdf(invoice, response) {
     doc.text(money(value), 415, y, { width: 132, align: "right" });
     y += 23;
   }
-  doc.rect(310, y - 4, 237, 38).fill("#405a41");
+  doc.rect(310, y - 4, 237, 38).fill("#2378bc");
   doc
     .font("Strong")
     .fontSize(12)
@@ -207,7 +233,7 @@ export function createPdf(invoice, response) {
     doc
       .font("Body")
       .fontSize(8)
-      .fillColor("#68706a")
+      .fillColor("#64748b")
       .text(`${invoice.number}  |  ${i + 1} / ${pages.count}`, 48, 793, {
         width,
         align: "center",

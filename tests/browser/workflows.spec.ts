@@ -6,17 +6,13 @@ test("complete invoicing workflow, snapshots, PDF, and responsive navigation", a
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Welcome back." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.getByLabel("Email address").fill("browser@example.com");
   await page
     .getByLabel("Password", { exact: true })
     .fill("browser-test-password-only");
-  await page.getByRole("button", { name: "Sign in to workspace" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Your business, at a glance." }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   await page.screenshot({
     path: "test-results/dashboard-desktop.png",
     fullPage: true,
@@ -157,9 +153,7 @@ test("complete invoicing workflow, snapshots, PDF, and responsive navigation", a
     .getByRole("navigation")
     .getByRole("button", { name: "Overview" })
     .click();
-  await expect(
-    page.getByRole("heading", { name: "Your business, at a glance." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   await page.screenshot({
     path: "test-results/dashboard-mobile.png",
     fullPage: true,
@@ -198,9 +192,7 @@ test("complete invoicing workflow, snapshots, PDF, and responsive navigation", a
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Open navigation" }).click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Welcome back." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 test("unsaved edits require confirmation and invalid login shows a useful error", async ({
@@ -209,17 +201,15 @@ test("unsaved edits require confirmation and invalid login shows a useful error"
   await page.goto("/");
   await page.getByLabel("Email address").fill("browser@example.com");
   await page.getByLabel("Password", { exact: true }).fill("incorrect-password");
-  await page.getByRole("button", { name: "Sign in to workspace" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Incorrect email or password",
   );
   await page
     .getByLabel("Password", { exact: true })
     .fill("browser-test-password-only");
-  await page.getByRole("button", { name: "Sign in to workspace" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Your business, at a glance." }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   await page
     .getByRole("button", { name: "Create invoice", exact: true })
     .first()
@@ -238,7 +228,5 @@ test("unsaved edits require confirmation and invalid login shows a useful error"
     .getByRole("navigation")
     .getByRole("button", { name: "Overview" })
     .click();
-  await expect(
-    page.getByRole("heading", { name: "Your business, at a glance." }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 });

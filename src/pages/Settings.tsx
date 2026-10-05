@@ -1,3 +1,6 @@
+import { ui } from "../components/styles";
+import { styles } from "./Settings.styles";
+import { BrandMark } from "../components/Brand";
 import { useState, useEffect, type FormEvent } from "react";
 import {
   FileText,
@@ -13,6 +16,8 @@ import type { Settings, Invoice } from "../types";
 import { api } from "../lib";
 import { Spinner, ErrorBox, Field, PageTitle, Modal } from "../components/ui";
 
+const MAX_LOGO_BYTES = 5_000_000;
+
 export function BusinessFields({
   value,
   onChange,
@@ -22,7 +27,7 @@ export function BusinessFields({
 }) {
   return (
     <>
-      <div className="form-grid">
+      <div className={ui.formGrid}>
         <Field label="Business / team name *">
           <input
             required
@@ -111,9 +116,9 @@ export function SettingsPage({
     if (!file || !v) return;
     if (
       !["image/png", "image/jpeg"].includes(file.type) ||
-      file.size > 500000
+      file.size > MAX_LOGO_BYTES
     ) {
-      setError("Choose a PNG or JPEG logo smaller than 500 KB.");
+      setError("Choose a PNG or JPEG logo that is 5 MB or smaller.");
       return;
     }
     const reader = new FileReader();
@@ -126,35 +131,30 @@ export function SettingsPage({
   if (!v) return <Spinner />;
   return (
     <>
-      <PageTitle
-        eyebrow="SET IT ONCE. USE IT EVERY TIME."
-        title="Settings"
-        description="The familiar details that make every invoice yours."
-      >
-        <button className="btn primary" form="settings-form" disabled={busy}>
+      <PageTitle title="Settings">
+        <button className={ui.btnPrimary} form="settings-form" disabled={busy}>
           <Check size={16} />
           {busy ? "Saving…" : "Save settings"}
         </button>
       </PageTitle>
       {error && <ErrorBox error={error} />}
       <form id="settings-form" onSubmit={save}>
-        <div className="settings-layout">
+        <div className={styles.settingsLayout}>
           <div>
-            <section className="panel form-panel">
-              <div className="section-title">
-                <span className="quick-icon">
+            <section className={ui.panelFormPanel}>
+              <div className={ui.sectionTitle}>
+                <span className={ui.quickIcon}>
                   <Users size={20} />
                 </span>
                 <div>
                   <h2>Business information</h2>
-                  <p>Your identity, on every invoice.</p>
                 </div>
               </div>
-              <div className="logo-upload">
+              <div className={styles.logoUpload}>
                 {v.business.logo ? (
                   <img src={v.business.logo} alt="Business logo" />
                 ) : (
-                  <span className="brand-mark">t.</span>
+                  <BrandMark />
                 )}
                 <div>
                   <Field label="Business logo">
@@ -165,12 +165,12 @@ export function SettingsPage({
                       onChange={(e) => logo(e.target.files?.[0])}
                     />
                   </Field>
-                  <small>PNG or JPEG · up to 500 KB</small>
+                  <small>PNG or JPEG · up to 5 MB</small>
                 </div>
                 {v.business.logo && (
                   <button
                     type="button"
-                    className="icon-button"
+                    className={ui.iconButton}
                     aria-label="Remove logo"
                     onClick={() =>
                       update({ business: { ...v.business, logo: "" } })
@@ -185,14 +185,13 @@ export function SettingsPage({
                 onChange={(business) => update({ business })}
               />
             </section>
-            <section className="panel form-panel">
-              <div className="section-title">
-                <span className="quick-icon">
+            <section className={ui.panelFormPanel}>
+              <div className={ui.sectionTitle}>
+                <span className={ui.quickIcon}>
                   <Wallet size={20} />
                 </span>
                 <div>
                   <h2>Payment information</h2>
-                  <p>Make the next step clear for your clients.</p>
                 </div>
               </div>
               <Field label="Bank name">
@@ -203,7 +202,7 @@ export function SettingsPage({
                   }
                 />
               </Field>
-              <div className="form-grid">
+              <div className={ui.formGrid}>
                 <Field label="Account name">
                   <input
                     value={v.payment.accountName}
@@ -231,17 +230,16 @@ export function SettingsPage({
             </section>
           </div>
           <div>
-            <section className="panel form-panel">
-              <div className="section-title">
-                <span className="quick-icon">
+            <section className={ui.panelFormPanel}>
+              <div className={ui.sectionTitle}>
+                <span className={ui.quickIcon}>
                   <FileText size={20} />
                 </span>
                 <div>
                   <h2>Invoice defaults</h2>
-                  <p>A head start on every new invoice.</p>
                 </div>
               </div>
-              <div className="form-grid">
+              <div className={ui.formGrid}>
                 <Field label="Invoice prefix">
                   <input
                     required
@@ -279,7 +277,7 @@ export function SettingsPage({
                   <option value="simple">Prefix-Number · INV-001</option>
                 </select>
               </Field>
-              <div className="form-grid">
+              <div className={ui.formGrid}>
                 <Field label="Default currency">
                   <select
                     value={v.currency}
@@ -320,25 +318,24 @@ export function SettingsPage({
                   onChange={(e) => update({ notes: e.target.value })}
                 />
               </Field>
-              <p className="note-box">
+              <p className={ui.noteBox}>
                 <ShieldCheck size={16} />
                 Changes to defaults apply to new invoices. Your existing
                 invoices keep their saved information.
               </p>
             </section>
-            <section className="panel form-panel">
-              <div className="section-title">
-                <span className="quick-icon">
+            <section className={ui.panelFormPanel}>
+              <div className={ui.sectionTitle}>
+                <span className={ui.quickIcon}>
                   <LockKeyhole size={20} />
                 </span>
                 <div>
                   <h2>Account security</h2>
-                  <p>Keep your workspace private.</p>
                 </div>
               </div>
               <button
                 type="button"
-                className="btn"
+                className={ui.btn}
                 onClick={() => setPassword(true)}
               >
                 Change admin password <ArrowUpRight size={15} />
@@ -384,7 +381,7 @@ export function PasswordForm() {
   return (
     <form onSubmit={submit}>
       {error && <ErrorBox error={error} />}
-      <p className="muted">Changing your password signs out all sessions.</p>
+      <p className={ui.muted}>Changing your password signs out all sessions.</p>
       <Field label="Current password">
         <input
           autoFocus
@@ -415,8 +412,8 @@ export function PasswordForm() {
           onChange={(e) => setRepeat(e.target.value)}
         />
       </Field>
-      <div className="modal-footer">
-        <button className="btn primary" disabled={busy}>
+      <div className={ui.modalFooter}>
+        <button className={ui.btnPrimary} disabled={busy}>
           Change password and sign out
         </button>
       </div>

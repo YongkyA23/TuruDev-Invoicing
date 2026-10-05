@@ -1,4 +1,15 @@
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { ui } from "./styles";
+import { styles } from "./ui.styles";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useId,
+  type ReactNode,
+} from "react";
 import {
   FileText,
   Plus,
@@ -12,12 +23,12 @@ import type { Client, Invoice, Status } from "../types";
 import { api, money, displayDate } from "../lib";
 
 export const statuses: Status[] = ["Draft", "Sent", "Paid", "Cancelled"];
-export type Navigate = (route: string) => void;
+export type Navigate = (route: string) => void | Promise<void>;
 export function Spinner() {
   return (
-    <div className="loading">
-      <LoaderCircle size={24} className="spin" />
-      <span>Loading your workspace…</span>
+    <div className={styles.loading}>
+      <LoaderCircle size={24} className={ui.spin} />
+      <span>Loading…</span>
     </div>
   );
 }
@@ -30,10 +41,10 @@ export function ErrorBox({
   retry?: () => void;
 }) {
   return (
-    <div className="error" role="alert">
+    <div className={styles.error} role="alert">
       {error}
       {retry && (
-        <button className="text-button" onClick={retry}>
+        <button className={ui.textButton} onClick={retry}>
           Try again
         </button>
       )}
@@ -51,7 +62,7 @@ export function Field({
   hint?: string;
 }) {
   return (
-    <label className="field">
+    <label className={styles.field}>
       <span>{label}</span>
       {children}
       {hint && <small>{hint}</small>}
@@ -61,7 +72,7 @@ export function Field({
 
 export function Badge({ status }: { status: Status }) {
   return (
-    <span className={`badge ${status.toLowerCase()}`}>
+    <span className={`${styles.badge} ${status.toLowerCase()}`}>
       <i />
       {status}
     </span>
@@ -75,19 +86,19 @@ export function Empty({
   onClick,
 }: {
   title: string;
-  description: string;
+  description?: string;
   action?: string;
   onClick?: () => void;
 }) {
   return (
-    <div className="empty">
-      <div className="empty-icon">
+    <div className={styles.empty}>
+      <div className={styles.emptyIcon}>
         <FileText size={25} />
       </div>
       <h3>{title}</h3>
-      <p>{description}</p>
+      {description && <p>{description}</p>}
       {action && (
-        <button className="btn primary" onClick={onClick}>
+        <button className={ui.btnPrimary} onClick={onClick}>
           <Plus size={16} />
           {action}
         </button>
@@ -97,24 +108,21 @@ export function Empty({
 }
 
 export function PageTitle({
-  eyebrow,
   title,
   description,
   children,
 }: {
-  eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   children?: ReactNode;
 }) {
   return (
-    <div className="page-title">
+    <div className={styles.pageTitle}>
       <div>
-        {eyebrow && <span className="eyebrow">{eyebrow}</span>}
         <h1>{title}</h1>
-        <p>{description}</p>
+        {description && <p>{description}</p>}
       </div>
-      <div className="title-actions">{children}</div>
+      <div className={styles.titleActions}>{children}</div>
     </div>
   );
 }
@@ -129,6 +137,7 @@ export function Modal({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const d = ref.current;
     d?.showModal();
@@ -136,16 +145,18 @@ export function Modal({
   }, []);
   return (
     <dialog
+      className={styles.dialog}
       ref={ref}
+      aria-labelledby={titleId}
       onCancel={onClose}
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}
     >
-      <div className="modal-heading">
-        <h2>{title}</h2>
+      <div className={styles.modalHeading}>
+        <h2 id={titleId}>{title}</h2>
         <button
-          className="icon-button"
+          className={ui.iconButton}
           aria-label="Close dialog"
           onClick={onClose}
         >
@@ -155,6 +166,66 @@ export function Modal({
       {children}
     </dialog>
   );
+}
+
+type ConfirmOptions = {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  destructive?: boolean;
+};
+
+type ConfirmAction = (options: ConfirmOptions) => Promise<boolean>;
+const ConfirmContext = createContext<ConfirmAction | null>(null);
+
+export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const [options, setOptions] = useState<ConfirmOptions | null>(null);
+  const resolve = useRef<((confirmed: boolean) => void) | null>(null);
+  const confirm = useCallback((next: ConfirmOptions) => {
+    resolve.current?.(false);
+    return new Promise<boolean>((done) => {
+      resolve.current = done;
+      setOptions(next);
+    });
+  }, []);
+  const finish = (confirmed: boolean) => {
+    resolve.current?.(confirmed);
+    resolve.current = null;
+    setOptions(null);
+  };
+
+  return (
+    <ConfirmContext.Provider value={confirm}>
+      {children}
+      {options && (
+        <Modal title={options.title} onClose={() => finish(false)}>
+          <p
+            id="confirm-dialog-message"
+            className="text-[13px] leading-6 text-muted"
+          >
+            {options.message}
+          </p>
+          <div className={ui.modalFooter}>
+            <button className={ui.btn} onClick={() => finish(false)} autoFocus>
+              Cancel
+            </button>
+            <button
+              className={options.destructive ? ui.btnDanger : ui.btnPrimary}
+              onClick={() => finish(true)}
+            >
+              {options.confirmLabel || "Continue"}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </ConfirmContext.Provider>
+  );
+}
+
+export function useConfirm() {
+  const confirm = useContext(ConfirmContext);
+  if (!confirm) throw new Error("useConfirm must be used within ConfirmProvider");
+  return confirm;
 }
 
 export function useLoad<T>(path: string, refresh = 0) {
@@ -190,16 +261,16 @@ export function InvoiceTable({
   onPdf?: (i: Invoice) => void;
 }) {
   return (
-    <div className="table-wrap">
+    <div className={ui.tableWrap}>
       <table>
         <thead>
           <tr>
             <th>Invoice</th>
             <th>Client</th>
             <th>Issued / due</th>
-            <th className="align-right">Amount</th>
+            <th className={ui.alignRight}>Amount</th>
             <th>Status</th>
-            <th className="align-right">Actions</th>
+            <th className={ui.alignRight}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -207,16 +278,16 @@ export function InvoiceTable({
             <tr key={i.id}>
               <td>
                 <button
-                  className="invoice-link"
+                  className={styles.invoiceLink}
                   onClick={() => navigate(`invoice/${i.id}`)}
                 >
                   {i.number}
                 </button>
-                {i.archived && <small className="subtext">Archived</small>}
+                {i.archived && <small className={ui.subtext}>Archived</small>}
               </td>
               <td>
-                <span className="client-cell">
-                  <span className="avatar mini">
+                <span className={styles.clientCell}>
+                  <span className={styles.avatarMini}>
                     {i.client.name.slice(0, 2).toUpperCase()}
                   </span>
                   <span>
@@ -227,18 +298,20 @@ export function InvoiceTable({
               </td>
               <td>
                 {displayDate(i.date)}
-                <small className="subtext">Due {displayDate(i.dueDate)}</small>
+                <small className={ui.subtext}>
+                  Due {displayDate(i.dueDate)}
+                </small>
               </td>
-              <td className="align-right amount">
+              <td className={styles.alignRightAmount}>
                 {money(i.totals!.total, i.currency)}
               </td>
               <td>
                 <Badge status={i.status} />
               </td>
               <td>
-                <div className="row-actions">
+                <div className={ui.rowActions}>
                   <button
-                    className="icon-button"
+                    className={ui.iconButton}
                     title="View invoice"
                     aria-label={`View ${i.number}`}
                     onClick={() => navigate(`invoice/${i.id}`)}
@@ -247,7 +320,7 @@ export function InvoiceTable({
                   </button>
                   {onDuplicate && (
                     <button
-                      className="icon-button"
+                      className={ui.iconButton}
                       title="Duplicate invoice"
                       aria-label={`Duplicate ${i.number}`}
                       onClick={() => onDuplicate(i)}
@@ -257,7 +330,7 @@ export function InvoiceTable({
                   )}
                   {onPdf && (
                     <button
-                      className="icon-button"
+                      className={ui.iconButton}
                       title="Download PDF"
                       aria-label={`Download ${i.number}`}
                       onClick={() => onPdf(i)}

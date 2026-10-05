@@ -58,7 +58,7 @@ const verifyPassword = (password, stored) => {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 };
 const seedPassword = process.env.ADMIN_PASSWORD;
-if (!db.prepare("SELECT id FROM admin WHERE id=1").get()) {
+if (!(await db.prepare("SELECT id FROM admin WHERE id=1").get())) {
   if (
     !process.env.ADMIN_EMAIL ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(process.env.ADMIN_EMAIL) ||
@@ -67,12 +67,11 @@ if (!db.prepare("SELECT id FROM admin WHERE id=1").get()) {
     seedPassword.length > 500
   )
     throw new Error(
-      "First startup requires ADMIN_EMAIL and an ADMIN_PASSWORD of at least 12 characters. Use npm run setup:local for development.",
+      "First startup requires ADMIN_EMAIL and an ADMIN_PASSWORD of at least 12 characters. Use bun run setup:local for development.",
     );
-  db.prepare("INSERT INTO admin (id,email,hash) VALUES (1,?,?)").run(
-    process.env.ADMIN_EMAIL.toLowerCase(),
-    hashPassword(seedPassword),
-  );
+  await db
+    .prepare("INSERT INTO admin (id,email,hash) VALUES (1,?,?)")
+    .run(process.env.ADMIN_EMAIL.toLowerCase(), hashPassword(seedPassword));
 }
 const app = express();
 if (process.env.TRUST_PROXY)
@@ -94,10 +93,10 @@ app.use(
     },
   }),
 );
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "8mb" }));
 app.use(cookieParser());
-app.get("/api/health", (req, res) => {
-  db.prepare("SELECT 1").get();
+app.get("/api/health", async (req, res) => {
+  await db.prepare("SELECT 1").get();
   res.json({ status: "ok" });
 });
 app.use("/api", (req, res, next) => {
@@ -118,7 +117,7 @@ const loginLimit = rateLimit({
   message: { error: "Too many login attempts. Try again in 15 minutes." },
 });
 const tokenHash = (token) => createHash("sha256").update(token).digest("hex");
-app.post("/api/auth/login", loginLimit, (req, res) => {
+app.post("/api/auth/login", loginLimit, async (req, res) => {
   const { email, password } = req.body || {};
   if (
     typeof email !== "string" ||
@@ -126,18 +125,16 @@ app.post("/api/auth/login", loginLimit, (req, res) => {
     password.length > 500
   )
     return res.status(400).json({ error: "Email and password are required" });
-  const admin = db.prepare("SELECT * FROM admin WHERE id=1").get();
+  const admin = await db.prepare("SELECT * FROM admin WHERE id=1").get();
   const valid = verifyPassword(password, admin.hash);
   if (!valid || email.toLowerCase() !== admin.email)
     return res.status(401).json({ error: "Incorrect email or password" });
-  db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
+  await db.prepare("DELETE FROM sessions WHERE expires<?").run(Date.now());
   const token = randomBytes(32).toString("hex"),
     csrf = randomBytes(32).toString("hex");
-  db.prepare("INSERT INTO sessions (token,csrf,expires) VALUES (?,?,?)").run(
-    tokenHash(token),
-    csrf,
-    Date.now() + 12 * 60 * 60 * 1000,
-  );
+  await db
+    .prepare("INSERT INTO sessions (token,csrf,expires) VALUES (?,?,?)")
+    .run(tokenHash(token), csrf, Date.now() + 12 * 60 * 60 * 1000);
   res.cookie("session", token, {
     httpOnly: true,
     secure: production,
@@ -147,13 +144,13 @@ app.post("/api/auth/login", loginLimit, (req, res) => {
   });
   res.json({ email: admin.email, csrf });
 });
-app.use("/api", (req, res, next) => {
+app.use("/api", async (req, res, next) => {
   const token = req.cookies.session;
   const session =
     typeof token === "string" &&
-    db
+    (await db
       .prepare("SELECT * FROM sessions WHERE token=? AND expires>?")
-      .get(tokenHash(token), Date.now());
+      .get(tokenHash(token), Date.now()));
   if (!session) return res.status(401).json({ error: "Please sign in" });
   req.session = session;
   if (
@@ -165,14 +162,12 @@ app.use("/api", (req, res, next) => {
       .json({ error: "Invalid security token. Refresh and try again." });
   next();
 });
-app.get("/api/auth/me", (req, res) =>
-  res.json({
-    email: db.prepare("SELECT email FROM admin WHERE id=1").get().email,
-    csrf: req.session.csrf,
-  }),
-);
-app.post("/api/auth/logout", (req, res) => {
-  db.prepare("DELETE FROM sessions WHERE token=?").run(req.session.token);
+app.get("/api/auth/me", async (req, res) => {
+  const admin = await db.prepare("SELECT email FROM admin WHERE id=1").get();
+  res.json({ email: admin.email, csrf: req.session.csrf });
+});
+app.post("/api/auth/logout", async (req, res) => {
+  await db.prepare("DELETE FROM sessions WHERE token=?").run(req.session.token);
   res.clearCookie("session", {
     path: "/",
     httpOnly: true,
@@ -181,9 +176,9 @@ app.post("/api/auth/logout", (req, res) => {
   });
   res.sendStatus(204);
 });
-app.put("/api/auth/password", (req, res) => {
+app.put("/api/auth/password", async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
-  const admin = db.prepare("SELECT * FROM admin WHERE id=1").get();
+  const admin = await db.prepare("SELECT * FROM admin WHERE id=1").get();
   if (
     typeof currentPassword !== "string" ||
     currentPassword.length > 500 ||
@@ -198,56 +193,65 @@ app.put("/api/auth/password", (req, res) => {
     return res
       .status(400)
       .json({ error: "New password must have 12–500 characters" });
-  transaction(() => {
-    db.prepare("UPDATE admin SET hash=? WHERE id=1").run(
+  await transaction(async () => {
+    await db.prepare("UPDATE admin SET hash=? WHERE id=1").run(
       hashPassword(newPassword),
     );
-    db.prepare("DELETE FROM sessions").run();
+    await db.prepare("DELETE FROM sessions").run();
   });
   res.clearCookie("session", { path: "/" });
   res.sendStatus(204);
 });
-app.get("/api/settings", (req, res) => res.json(getSettings()));
-app.put("/api/settings", (req, res) => {
+app.get("/api/settings", async (req, res) => res.json(await getSettings()));
+app.put("/api/settings", async (req, res) => {
   const v = settingsSchema.parse(req.body);
-  putSettings(v);
+  await putSettings(v);
   res.json(v);
 });
 for (const [table, schema] of [
   ["clients", clientSchema],
   ["services", serviceSchema],
 ]) {
-  app.get(`/api/${table}`, (req, res) =>
+  app.get(`/api/${table}`, async (req, res) =>
     res.json(
-      db.prepare(`SELECT * FROM ${table} ORDER BY id DESC`).all().map(fromRow),
+      (await db.prepare(`SELECT * FROM ${table} ORDER BY id DESC`).all()).map(
+        fromRow,
+      ),
     ),
   );
-  app.post(`/api/${table}`, (req, res) => {
+  app.post(`/api/${table}`, async (req, res) => {
     const data = schema.parse(req.body);
-    const r = db
+    const r = await db
       .prepare(`INSERT INTO ${table} (data) VALUES (?)`)
       .run(JSON.stringify(data));
     res.status(201).json({ ...data, id: Number(r.lastInsertRowid) });
   });
-  app.put(`/api/${table}/:id`, (req, res) => {
+  app.put(`/api/${table}/:id`, async (req, res) => {
     const data = schema.parse(req.body);
-    const r = db
+    const r = await db
       .prepare(`UPDATE ${table} SET data=? WHERE id=?`)
       .run(JSON.stringify(data), req.params.id);
-    if (!r.changes) return res.status(404).json({ error: "Record not found" });
+    if (
+      !r.changes &&
+      !(await db.prepare(`SELECT id FROM ${table} WHERE id=?`).get(req.params.id))
+    )
+      return res.status(404).json({ error: "Record not found" });
     res.json({ ...data, id: Number(req.params.id) });
   });
-  app.delete(`/api/${table}/:id`, (req, res) => {
-    const r = db.prepare(`DELETE FROM ${table} WHERE id=?`).run(req.params.id);
+  app.delete(`/api/${table}/:id`, async (req, res) => {
+    const r = await db
+      .prepare(`DELETE FROM ${table} WHERE id=?`)
+      .run(req.params.id);
     if (!r.changes) return res.status(404).json({ error: "Record not found" });
     res.sendStatus(204);
   });
 }
-app.get("/api/invoices", (req, res) => {
-  let invoices = db
-    .prepare("SELECT * FROM invoices ORDER BY updated_at DESC,id DESC")
-    .all()
-    .map(fromRow);
+app.get("/api/invoices", async (req, res) => {
+  let invoices = (
+    await db
+      .prepare("SELECT * FROM invoices ORDER BY updated_at DESC,id DESC")
+      .all()
+  ).map(fromRow);
   if (req.query.archived !== "true")
     invoices = invoices.filter((i) => !i.archived);
   if (req.query.q) {
@@ -271,13 +275,14 @@ app.get("/api/invoices", (req, res) => {
     invoices = invoices.filter((i) => i.date <= String(req.query.to));
   res.json(invoices);
 });
-app.get("/api/dashboard", (req, res) => {
-  const list = db
-    .prepare(
-      "SELECT * FROM invoices WHERE archived=0 ORDER BY updated_at DESC,id DESC",
-    )
-    .all()
-    .map(fromRow);
+app.get("/api/dashboard", async (req, res) => {
+  const list = (
+    await db
+      .prepare(
+        "SELECT * FROM invoices WHERE archived=0 ORDER BY updated_at DESC,id DESC",
+      )
+      .all()
+  ).map(fromRow);
   const status = Object.fromEntries(
     ["Draft", "Sent", "Paid", "Cancelled"].map((s) => [
       s,
@@ -300,24 +305,24 @@ app.get("/api/dashboard", (req, res) => {
     recent: list.slice(0, 6),
   });
 });
-function checkClient(data) {
+async function checkClient(data) {
   if (
     data.clientId === null ||
-    !db.prepare("SELECT id FROM clients WHERE id=?").get(data.clientId)
+    !(await db.prepare("SELECT id FROM clients WHERE id=?").get(data.clientId))
   ) {
     const e = new Error("Select a saved client");
     e.status = 400;
     throw e;
   }
 }
-function writeInvoice(input) {
+async function writeInvoice(input) {
   const data = invoiceSchema.parse(input);
-  checkClient(data);
+  await checkClient(data);
   const totals = calculate(data);
-  return transaction(() => {
-    const number = data.number || reserveNumber();
+  return transaction(async () => {
+    const number = data.number || (await reserveNumber());
     const timestamp = new Date().toISOString();
-    const r = db
+    const r = await db
       .prepare(
         "INSERT INTO invoices (number,data,created_at,updated_at) VALUES (?,?,?,?)",
       )
@@ -330,24 +335,24 @@ function writeInvoice(input) {
     return getInvoice(Number(r.lastInsertRowid));
   });
 }
-app.post("/api/invoices", (req, res) =>
-  res.status(201).json(writeInvoice(req.body)),
+app.post("/api/invoices", async (req, res) =>
+  res.status(201).json(await writeInvoice(req.body)),
 );
-app.get("/api/invoices/:id", (req, res) => {
-  const i = getInvoice(req.params.id);
+app.get("/api/invoices/:id", async (req, res) => {
+  const i = await getInvoice(req.params.id);
   if (!i) return res.status(404).json({ error: "Invoice not found" });
   res.json(i);
 });
-app.put("/api/invoices/:id", (req, res) => {
-  const existing = getInvoice(req.params.id);
+app.put("/api/invoices/:id", async (req, res) => {
+  const existing = await getInvoice(req.params.id);
   if (!existing) return res.status(404).json({ error: "Invoice not found" });
   const data = invoiceSchema.parse(req.body);
   if (!data.number)
     return res.status(400).json({ error: "Invoice number cannot be empty" });
   // Historical snapshots remain editable even if their original client was deleted.
-  if (data.clientId !== existing.clientId) checkClient(data);
+  if (data.clientId !== existing.clientId) await checkClient(data);
   const totals = calculate(data);
-  const r = db
+  const r = await db
     .prepare(
       "UPDATE invoices SET number=?,data=?,version=version+1,updated_at=? WHERE id=? AND version=?",
     )
@@ -362,10 +367,10 @@ app.put("/api/invoices/:id", (req, res) => {
     return res.status(409).json({
       error: "This invoice changed in another window. Reload before saving.",
     });
-  res.json(getInvoice(req.params.id));
+  res.json(await getInvoice(req.params.id));
 });
-app.patch("/api/invoices/:id/status", (req, res) => {
-  const i = getInvoice(req.params.id);
+app.patch("/api/invoices/:id/status", async (req, res) => {
+  const i = await getInvoice(req.params.id);
   if (!i) return res.status(404).json({ error: "Invoice not found" });
   if (!["Draft", "Sent", "Paid", "Cancelled"].includes(req.body.status))
     return res.status(400).json({ error: "Invalid status" });
@@ -374,13 +379,15 @@ app.patch("/api/invoices/:id/status", (req, res) => {
       .status(409)
       .json({ error: "This invoice changed. Reload before changing status." });
   i.status = req.body.status;
-  db.prepare(
-    "UPDATE invoices SET data=?,version=version+1,updated_at=? WHERE id=?",
-  ).run(JSON.stringify(i), new Date().toISOString(), i.id);
-  res.json(getInvoice(i.id));
+  await db
+    .prepare(
+      "UPDATE invoices SET data=?,version=version+1,updated_at=? WHERE id=?",
+    )
+    .run(JSON.stringify(i), new Date().toISOString(), i.id);
+  res.json(await getInvoice(i.id));
 });
-app.post("/api/invoices/:id/duplicate", (req, res) => {
-  const i = getInvoice(req.params.id);
+app.post("/api/invoices/:id/duplicate", async (req, res) => {
+  const i = await getInvoice(req.params.id);
   if (!i) return res.status(404).json({ error: "Invoice not found" });
   const data = invoiceSchema.parse({
     ...i,
@@ -390,10 +397,10 @@ app.post("/api/invoices/:id/duplicate", (req, res) => {
     confirmEarlyDue: false,
     status: "Draft",
   });
-  const copy = transaction(() => {
-    const number = reserveNumber(),
-      timestamp = new Date().toISOString();
-    const r = db
+  const copy = await transaction(async () => {
+    const number = await reserveNumber();
+    const timestamp = new Date().toISOString();
+    const r = await db
       .prepare(
         "INSERT INTO invoices (number,data,created_at,updated_at) VALUES (?,?,?,?)",
       )
@@ -407,27 +414,31 @@ app.post("/api/invoices/:id/duplicate", (req, res) => {
   });
   res.status(201).json(copy);
 });
-app.delete("/api/invoices/:id", (req, res) => {
-  const i = getInvoice(req.params.id);
+app.delete("/api/invoices/:id", async (req, res) => {
+  const i = await getInvoice(req.params.id);
   if (!i) return res.status(404).json({ error: "Invoice not found" });
   if (i.status === "Draft")
-    db.prepare("DELETE FROM invoices WHERE id=?").run(i.id);
+    await db.prepare("DELETE FROM invoices WHERE id=?").run(i.id);
   else
-    db.prepare(
-      "UPDATE invoices SET archived=1,version=version+1,updated_at=? WHERE id=?",
-    ).run(new Date().toISOString(), i.id);
+    await db
+      .prepare(
+        "UPDATE invoices SET archived=1,version=version+1,updated_at=? WHERE id=?",
+      )
+      .run(new Date().toISOString(), i.id);
   res.sendStatus(204);
 });
-app.post("/api/invoices/:id/restore", (req, res) => {
-  const i = getInvoice(req.params.id);
+app.post("/api/invoices/:id/restore", async (req, res) => {
+  const i = await getInvoice(req.params.id);
   if (!i) return res.status(404).json({ error: "Invoice not found" });
-  db.prepare(
-    "UPDATE invoices SET archived=0,version=version+1,updated_at=? WHERE id=?",
-  ).run(new Date().toISOString(), i.id);
-  res.json(getInvoice(i.id));
+  await db
+    .prepare(
+      "UPDATE invoices SET archived=0,version=version+1,updated_at=? WHERE id=?",
+    )
+    .run(new Date().toISOString(), i.id);
+  res.json(await getInvoice(i.id));
 });
-app.get("/api/invoices/:id/pdf", (req, res) => {
-  const invoice = getInvoice(req.params.id);
+app.get("/api/invoices/:id/pdf", async (req, res) => {
+  const invoice = await getInvoice(req.params.id);
   if (!invoice) return res.status(404).json({ error: "Invoice not found" });
   res
     .type("application/pdf")
@@ -453,10 +464,7 @@ app.use((err, req, res, next) => {
         .map((i) => `${i.path.join(".")}: ${i.message}`)
         .join("; "),
     });
-  if (
-    err.code?.includes("SQLITE_CONSTRAINT") ||
-    err.message?.includes("UNIQUE constraint")
-  )
+  if (err.code === "ER_DUP_ENTRY")
     return res
       .status(409)
       .json({ error: "This invoice number is already in use" });
@@ -479,8 +487,8 @@ const server = app.listen(Number(process.env.PORT || 3000), "0.0.0.0", () =>
 );
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () =>
-    server.close(() => {
-      db.close();
+    server.close(async () => {
+      await db.close();
       process.exit(0);
     }),
   );
