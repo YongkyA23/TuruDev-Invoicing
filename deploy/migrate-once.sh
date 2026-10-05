@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source_db=/home/turudev-runner/invoices.sqlite
+source_db=/var/lib/turudev-invoicing/migration/invoices.sqlite
 marker=/var/lib/turudev-invoicing/.sqlite-migrated
 
 if [[ -e "$marker" ]]; then
