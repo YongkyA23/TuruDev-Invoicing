@@ -211,11 +211,13 @@ export function InvoicePaper({ invoice }: { invoice: Invoice }) {
           )}
           <h2>{invoice.business.name}</h2>
           <p className={ui.preWrap}>{invoice.business.address}</p>
-          <p>
-            {invoice.business.email}
-            <br />
-            {invoice.business.phone}
-          </p>
+          {(invoice.business.email || invoice.business.phone) && (
+            <p>
+              {invoice.business.email}
+              {invoice.business.email && invoice.business.phone && <br />}
+              {invoice.business.phone}
+            </p>
+          )}
           {invoice.business.website && <p>{invoice.business.website}</p>}
           {invoice.business.taxId && <p>Tax ID: {invoice.business.taxId}</p>}
         </div>
@@ -237,11 +239,13 @@ export function InvoicePaper({ invoice }: { invoice: Invoice }) {
         <h3>{invoice.client.name || "Select a client"}</h3>
         <p>{invoice.client.company}</p>
         <p className={ui.preWrap}>{invoice.client.address}</p>
-        <p>
-          {invoice.client.email}
-          <br />
-          {invoice.client.phone}
-        </p>
+        {(invoice.client.email || invoice.client.phone) && (
+          <p>
+            {invoice.client.email}
+            {invoice.client.email && invoice.client.phone && <br />}
+            {invoice.client.phone}
+          </p>
+        )}
         {invoice.client.taxId && <p>Tax ID: {invoice.client.taxId}</p>}
       </div>
       <div className={ui.tableWrap}>
