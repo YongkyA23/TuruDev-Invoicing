@@ -100,8 +100,8 @@ test("complete invoicing workflow, snapshots, PDF, and responsive navigation", a
   expect(download.suggestedFilename()).toMatch(/^INV-\d{4}-001\.pdf$/);
   const path = await download.path();
   expect(readFileSync(path!).subarray(0, 5).toString()).toBe("%PDF-");
-  page.on("dialog", (d) => d.accept());
   await page.getByLabel("Update status").selectOption("Paid");
+  await dialog.getByRole("button", { name: "Mark Paid" }).click();
   await expect(page.locator(".detail-toolbar .badge")).toHaveText("Paid");
   await page.getByRole("button", { name: "Duplicate", exact: true }).click();
   await expect(
@@ -139,6 +139,7 @@ test("complete invoicing workflow, snapshots, PDF, and responsive navigation", a
   await expect(page.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("button", { name: /View INV-.*001/ }).click();
   await page.getByRole("button", { name: "Archive invoice" }).click();
+  await dialog.getByRole("button", { name: "Archive invoice" }).click();
   await expect(
     page.getByRole("heading", { name: "Invoices", exact: true }),
   ).toBeVisible();
@@ -215,18 +216,25 @@ test("unsaved edits require confirmation and invalid login shows a useful error"
     .first()
     .click();
   await page.getByLabel("Invoice notes").fill("Unsaved changes");
-  page.once("dialog", (d) => d.dismiss());
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "Overview" })
     .click();
+  const confirmDialog = page.getByRole("dialog");
+  await expect(confirmDialog).toContainText(
+    "You have unsaved changes. Leave this page?",
+  );
+  await confirmDialog.getByRole("button", { name: "Cancel" }).click();
   await expect(
     page.getByRole("heading", { name: "Create an invoice" }),
   ).toBeVisible();
-  page.once("dialog", (d) => d.accept());
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "Overview" })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Leave page" })
     .click();
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
 });
